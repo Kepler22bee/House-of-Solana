@@ -1,5 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
+use ephemeral_rollups_sdk::access_control::{
+    CreateGroupCpiBuilder, CreatePermissionCpiBuilder, Group, Permission,
+    MAGICBLOCK_PERMISSION_PROGRAM_ID,
+};
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
@@ -152,6 +156,47 @@ pub mod house_of_solana {
         player.bump = ctx.bumps.player;
 
         msg!("Player initialized with {} chips", DEFAULT_BALANCE);
+        Ok(())
+    }
+
+    /// Set up Private ER permissions for the CoinToss account.
+    /// Creates a Group (members = [player]) and a Permission linking CoinToss to that group.
+    /// This ensures only the player can read their coin toss state on the TEE ER.
+    pub fn setup_permissions(ctx: Context<SetupPermissions>) -> Result<()> {
+        let coin_toss_pda = ctx.accounts.coin_toss.key();
+        let authority_key = ctx.accounts.authority.key();
+
+        // 1. Create Group with player as sole member
+        CreateGroupCpiBuilder::new(&ctx.accounts.permission_program)
+            .group(&ctx.accounts.group)
+            .payer(&ctx.accounts.authority)
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .id(authority_key)
+            .members(vec![authority_key])
+            .invoke()?;
+
+        // 2. Create Permission for CoinToss account, linked to the group
+        // CoinToss is a PDA owned by our program — must sign via invoke_signed
+        let bump = ctx.bumps.coin_toss;
+        let seeds: &[&[u8]] = &[
+            COIN_TOSS_SEED,
+            ctx.accounts.authority.key.as_ref(),
+            &[bump],
+        ];
+
+        CreatePermissionCpiBuilder::new(&ctx.accounts.permission_program)
+            .permission(&ctx.accounts.permission_coin_toss)
+            .delegated_account(&ctx.accounts.coin_toss.to_account_info())
+            .group(&ctx.accounts.group)
+            .payer(&ctx.accounts.authority)
+            .system_program(&ctx.accounts.system_program.to_account_info())
+            .invoke_signed(&[seeds])?;
+
+        msg!(
+            "Permissions set up: CoinToss {} restricted to player {}",
+            coin_toss_pda,
+            authority_key
+        );
         Ok(())
     }
 
@@ -394,6 +439,33 @@ pub struct InitializeVault<'info> {
         bump,
     )]
     pub vault: Account<'info, Vault>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SetupPermissions<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [COIN_TOSS_SEED, authority.key().as_ref()],
+        bump,
+    )]
+    pub coin_toss: Account<'info, CoinToss>,
+
+    /// CHECK: Group PDA — created by the permission program
+    #[account(mut)]
+    pub group: AccountInfo<'info>,
+
+    /// CHECK: Permission PDA for coin_toss — created by the permission program
+    #[account(mut)]
+    pub permission_coin_toss: AccountInfo<'info>,
+
+    /// CHECK: MagicBlock Permission Program
+    #[account(address = MAGICBLOCK_PERMISSION_PROGRAM_ID)]
+    pub permission_program: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
