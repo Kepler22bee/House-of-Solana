@@ -12,8 +12,9 @@
       "name": "initialize_player",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 1],
       "accounts": [
-        { "name": "player", "writable": true, "signer": true },
-        { "name": "game_state", "writable": true },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "coin_toss", "writable": true },
         { "name": "system_program" }
       ],
       "args": []
@@ -22,9 +23,10 @@
       "name": "flip_coin",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 2],
       "accounts": [
-        { "name": "player", "writable": true, "signer": true },
-        { "name": "game_state", "writable": true },
-        { "name": "coin_toss_state", "writable": true },
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "coin_toss", "writable": true },
+        { "name": "oracle_queue", "writable": true },
         { "name": "system_program" }
       ],
       "args": [
@@ -33,17 +35,19 @@
       ]
     },
     {
-      "name": "settle_coin_toss",
+      "name": "callback_flip_coin",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 3],
       "accounts": [
-        { "name": "player", "writable": true, "signer": true },
-        { "name": "game_state", "writable": true },
-        { "name": "coin_toss_state", "writable": true }
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "coin_toss", "writable": true }
       ],
-      "args": []
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
     },
     {
-      "name": "delegate_game",
+      "name": "delegate_player",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 4],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
@@ -52,34 +56,58 @@
       "args": []
     },
     {
-      "name": "undelegate_game",
+      "name": "delegate_coin_toss",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 5],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_player",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 6],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
         { "name": "pda", "writable": true },
-        { "name": "magic_program" },
-        { "name": "magic_context" }
+        { "name": "magic_context" },
+        { "name": "magic_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_coin_toss",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 7],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true },
+        { "name": "magic_context" },
+        { "name": "magic_program" }
       ],
       "args": []
     }
   ],
   "accounts": [
     {
-      "name": "GameState",
+      "name": "Player",
       "discriminator": [0, 0, 0, 0, 0, 0, 1, 0],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "player", "type": "publicKey" },
+          { "name": "authority", "type": "publicKey" },
           { "name": "balance", "type": "u64" },
           { "name": "total_bets", "type": "u32" },
           { "name": "total_wins", "type": "u32" },
-          { "name": "initialized", "type": "bool" }
+          { "name": "total_losses", "type": "u32" },
+          { "name": "total_wagered", "type": "u64" },
+          { "name": "total_won", "type": "u64" },
+          { "name": "initialized", "type": "bool" },
+          { "name": "bump", "type": "u8" }
         ]
       }
     },
     {
-      "name": "CoinTossState",
+      "name": "CoinToss",
       "discriminator": [0, 0, 0, 0, 0, 0, 2, 0],
       "type": {
         "kind": "struct",
@@ -89,17 +117,34 @@
           { "name": "result", "type": "u8" },
           { "name": "bet_amount", "type": "u64" },
           { "name": "won", "type": "bool" },
-          { "name": "settled", "type": "bool" }
+          { "name": "status", "type": { "defined": "TossStatus" } },
+          { "name": "bump", "type": "u8" }
         ]
       }
     }
   ],
-  "types": [],
+  "types": [
+    {
+      "name": "TossStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Idle" },
+          { "name": "Pending" },
+          { "name": "Settled" }
+        ]
+      }
+    }
+  ],
   "errors": [
     { "code": 6000, "name": "AlreadyInitialized", "msg": "Player already initialized" },
     { "code": 6001, "name": "InvalidChoice", "msg": "Choice must be 0 (heads) or 1 (tails)" },
-    { "code": 6002, "name": "BetTooLarge", "msg": "Bet amount exceeds balance" },
-    { "code": 6003, "name": "AlreadySettled", "msg": "Coin toss already settled" },
-    { "code": 6004, "name": "NotSettled", "msg": "Coin toss not yet settled" }
+    { "code": 6002, "name": "BetTooSmall", "msg": "Bet amount below minimum" },
+    { "code": 6003, "name": "BetTooLarge", "msg": "Bet amount above maximum" },
+    { "code": 6004, "name": "InsufficientBalance", "msg": "Insufficient balance for bet" },
+    { "code": 6005, "name": "TossAlreadyPending", "msg": "Coin toss already pending" },
+    { "code": 6006, "name": "NoPendingToss", "msg": "No pending coin toss to settle" },
+    { "code": 6007, "name": "AlreadySettled", "msg": "Coin toss already settled" },
+    { "code": 6008, "name": "Unauthorized", "msg": "Unauthorized" }
   ]
 }

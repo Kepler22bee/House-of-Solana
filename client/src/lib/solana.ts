@@ -45,7 +45,7 @@ const MAGIC_CONTEXT_ID = new PublicKey(
   "MagicContext1111111111111111111111111111111"
 );
 
-const GAME_STATE_SEED = "game_state";
+const PLAYER_SEED = "player";
 const COIN_TOSS_SEED = "coin_toss";
 
 const SESSION_KEY = "hos_session_keypair";
@@ -326,9 +326,9 @@ async function fetchAccountWithFallback(
 
 // ===== PDA HELPERS =====
 
-export function getGameStatePDA(player: PublicKey): [PublicKey, number] {
+export function getPlayerPDA(player: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(GAME_STATE_SEED), player.toBuffer()],
+    [Buffer.from(PLAYER_SEED), player.toBuffer()],
     PROGRAM_ID
   );
 }
@@ -348,6 +348,7 @@ function getDelegationCacheKey(player: PublicKey): string {
 
 async function delegatePda(
   keypair: Keypair,
+  methodName: string,
   pda: PublicKey,
   label: string
 ): Promise<void> {
@@ -361,7 +362,7 @@ async function delegatePda(
     await withBlockhashRetry(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (program.methods as any)
-        .delegateGame()
+        [methodName]()
         .accounts({
           payer: keypair.publicKey,
           pda,
@@ -386,11 +387,11 @@ export async function ensureGameDelegated(keypair: Keypair): Promise<void> {
   if (typeof window !== "undefined" && localStorage.getItem(cacheKey) === "1")
     return;
 
-  const [gameStatePDA] = getGameStatePDA(keypair.publicKey);
+  const [playerPDA] = getPlayerPDA(keypair.publicKey);
   const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
 
-  await delegatePda(keypair, gameStatePDA, "Game State");
-  await delegatePda(keypair, coinTossPDA, "Coin Toss State");
+  await delegatePda(keypair, "delegatePlayer", playerPDA, "Player");
+  await delegatePda(keypair, "delegateCoinToss", coinTossPDA, "Coin Toss");
 
   if (typeof window !== "undefined") {
     localStorage.setItem(cacheKey, "1");
@@ -399,6 +400,7 @@ export async function ensureGameDelegated(keypair: Keypair): Promise<void> {
 
 async function undelegateAccount(
   keypair: Keypair,
+  methodName: string,
   pda: PublicKey,
   label: string
 ): Promise<boolean> {
@@ -407,7 +409,7 @@ async function undelegateAccount(
     const program = getProgram(keypair, "er");
     const tx = await sendMethodTx(keypair, "er", () =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (program.methods as any).undelegateGame().accounts({
+      (program.methods as any)[methodName]().accounts({
         payer: keypair.publicKey,
         pda,
         magicProgram: MAGIC_PROGRAM_ID,
@@ -428,12 +430,14 @@ export async function ensureAllUndelegated(keypair: Keypair): Promise<void> {
   const conn = getBaseConnection();
   const accounts = [
     {
-      pda: getGameStatePDA(keypair.publicKey)[0],
-      label: "Game State",
+      pda: getPlayerPDA(keypair.publicKey)[0],
+      method: "commitPlayer",
+      label: "Player",
     },
     {
       pda: getCoinTossStatePDA(keypair.publicKey)[0],
-      label: "Coin Toss State",
+      method: "commitCoinToss",
+      label: "Coin Toss",
     },
   ];
 
@@ -445,7 +449,7 @@ export async function ensureAllUndelegated(keypair: Keypair): Promise<void> {
         console.log(
           `[Solana] ${acct.label} still delegated — undelegating...`
         );
-        await undelegateAccount(keypair, acct.pda, acct.label);
+        await undelegateAccount(keypair, acct.method, acct.pda, acct.label);
         undelegated = true;
       }
     } catch (e) {
@@ -497,15 +501,15 @@ export async function ensureFunded(keypair: Keypair): Promise<boolean> {
 // ===== ACCOUNT FETCHERS =====
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function fetchGameState(keypair: Keypair): Promise<any> {
-  const [pda] = getGameStatePDA(keypair.publicKey);
-  return fetchAccountWithFallback(keypair, "gameState", pda);
+export async function fetchPlayer(keypair: Keypair): Promise<any> {
+  const [pda] = getPlayerPDA(keypair.publicKey);
+  return fetchAccountWithFallback(keypair, "player", pda);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function fetchCoinTossState(keypair: Keypair): Promise<any> {
   const [pda] = getCoinTossStatePDA(keypair.publicKey);
-  return fetchAccountWithFallback(keypair, "coinTossState", pda);
+  return fetchAccountWithFallback(keypair, "coinToss", pda);
 }
 
 // ===== INSTRUCTIONS =====
@@ -514,11 +518,18 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
   const id = txPending("Initialize Player");
   try {
     const program = getProgram(keypair, "base");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
     const tx = await withBlockhashRetry<string>(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (program.methods as any)
         .initializePlayer()
-        .accounts({ player: keypair.publicKey })
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          coinToss: coinTossPDA,
+          systemProgram: SystemProgram.programId,
+        })
         .rpc()
     );
     txConfirmed(id, tx);
@@ -530,17 +541,22 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
   }
 }
 
+// VRF Oracle Queue (MagicBlock default)
+const VRF_ORACLE_QUEUE = new PublicKey(
+  "oraaborPnkaKQ9MmQYaGQbsMfuYoh4LZdWJX4zhMyLk"
+);
+
 export async function callFlipCoin(
   keypair: Keypair,
   choice: number,
-  betAmount: number = 1000000 // 0.001 SOL in lamports
+  betAmount: number = 100 // in-game chips (not lamports)
 ): Promise<string> {
   const side = choice === 0 ? "Heads" : "Tails";
   const id = txPending(`Flip Coin (${side})`);
   try {
     await ensureGameDelegated(keypair);
     const program = getProgram(keypair, "er");
-    const [gameStatePDA] = getGameStatePDA(keypair.publicKey);
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
     const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
 
     const tx = await sendMethodTx(keypair, "er", () =>
@@ -548,9 +564,10 @@ export async function callFlipCoin(
       (program.methods as any)
         .flipCoin(choice, new BN(betAmount))
         .accounts({
-          player: keypair.publicKey,
-          gameState: gameStatePDA,
-          coinTossState: coinTossPDA,
+          authority: keypair.publicKey,
+          player: playerPDA,
+          coinToss: coinTossPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
           systemProgram: SystemProgram.programId,
         })
     );
@@ -563,28 +580,23 @@ export async function callFlipCoin(
   }
 }
 
-export async function callSettleCoinToss(keypair: Keypair): Promise<string> {
-  const id = txPending("Settle Coin Toss");
-  try {
-    const program = getProgram(keypair, "er");
-    const [gameStatePDA] = getGameStatePDA(keypair.publicKey);
-    const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
-
-    const tx = await sendMethodTx(keypair, "er", () =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (program.methods as any).settleCoinToss().accounts({
-        player: keypair.publicKey,
-        gameState: gameStatePDA,
-        coinTossState: coinTossPDA,
-      })
-    );
-    txConfirmed(id, tx);
-    return tx;
-  } catch (e) {
-    const msg = normalizeProgramError(e);
-    txError(id, msg.slice(0, 80));
-    throw e;
+/**
+ * Wait for VRF callback to settle the coin toss.
+ * Polls the coin toss account until status changes from Pending to Settled.
+ */
+export async function waitForCoinTossResult(
+  keypair: Keypair,
+  maxWaitMs: number = 10000
+): Promise<{ won: boolean; result: number }> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const state = await fetchCoinTossState(keypair);
+    if (state && state.status?.settled !== undefined) {
+      return { won: state.won, result: state.result };
+    }
+    await new Promise((r) => setTimeout(r, 500));
   }
+  throw new Error("VRF callback timeout — coin toss not settled");
 }
 
-export { BN, LAMPORTS_PER_SOL };
+export { BN, LAMPORTS_PER_SOL, PublicKey };
