@@ -1,6 +1,13 @@
 "use client";
 import dynamic from "next/dynamic";
-import type { CSSProperties } from "react";
+import { useState, useCallback, type CSSProperties } from "react";
+import {
+  getSessionKeypair,
+  clearSessionKeypair,
+  ensureFunded,
+  authenticateTee,
+  getBaseConnection,
+} from "../../lib/solana";
 
 const GameCanvas = dynamic(() => import("../../game/GameCanvas"), {
   ssr: false,
@@ -14,7 +21,46 @@ const GameCanvas = dynamic(() => import("../../game/GameCanvas"), {
 });
 
 export default function GamePage() {
-  // TODO: Replace with Solana wallet integration
+  const [status, setStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+  const [address, setAddress] = useState<string | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConnect = useCallback(async () => {
+    setStatus("connecting");
+    setError(null);
+    try {
+      const keypair = getSessionKeypair();
+      const pubkey = keypair.publicKey.toBase58();
+      console.log("[Wallet] Session keypair:", pubkey);
+
+      // Airdrop if needed (devnet)
+      await ensureFunded(keypair);
+
+      // Authenticate with TEE ER
+      await authenticateTee(keypair);
+
+      // Get balance
+      const conn = getBaseConnection();
+      const bal = await conn.getBalance(keypair.publicKey);
+      setBalance(bal / 1e9);
+
+      setAddress(pubkey);
+      setStatus("connected");
+    } catch (e) {
+      console.error("[Wallet] Connection failed:", e);
+      setError(e instanceof Error ? e.message : "Connection failed");
+      setStatus("disconnected");
+    }
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    clearSessionKeypair();
+    setAddress(null);
+    setBalance(null);
+    setStatus("disconnected");
+  }, []);
+
   const buttonStyle: CSSProperties = {
     background: "rgba(0,0,0,0.85)",
     border: "2px solid #fdd835",
@@ -28,6 +74,8 @@ export default function GamePage() {
     boxShadow: "0 0 20px rgba(253,216,53,0.3)",
     cursor: "pointer",
   };
+
+  const shortAddr = address ? `${address.slice(0, 4)}...${address.slice(-4)}` : null;
 
   return (
     <div style={{ position: "fixed", inset: 0, overflow: "hidden", background: "#0a0a0a" }}>
@@ -46,11 +94,65 @@ export default function GamePage() {
           fontFamily: "'Courier New', monospace",
         }}
       >
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button type="button" style={buttonStyle}>
+        {status === "disconnected" && (
+          <button type="button" style={buttonStyle} onClick={handleConnect}>
             Connect Wallet
           </button>
-        </div>
+        )}
+
+        {status === "connecting" && (
+          <div style={{ ...buttonStyle, cursor: "default", opacity: 0.7 }}>
+            Connecting...
+          </div>
+        )}
+
+        {status === "connected" && shortAddr && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div
+              style={{
+                background: "rgba(0,0,0,0.85)",
+                border: "2px solid #4caf50",
+                borderRadius: 12,
+                padding: "8px 16px",
+                fontFamily: "'Courier New', monospace",
+                fontSize: 14,
+                color: "#4caf50",
+                letterSpacing: 1,
+              }}
+            >
+              {shortAddr}
+              {balance !== null && (
+                <span style={{ color: "#fdd835", marginLeft: 8 }}>
+                  {balance.toFixed(3)} SOL
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              style={{ ...buttonStyle, fontSize: 12, padding: "6px 12px", borderColor: "#666", color: "#666" }}
+              onClick={handleDisconnect}
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div
+            style={{
+              background: "rgba(233,69,96,0.15)",
+              border: "1px solid #e94560",
+              borderRadius: 8,
+              padding: "6px 12px",
+              fontSize: 12,
+              color: "#e94560",
+              maxWidth: 300,
+              textAlign: "center",
+            }}
+          >
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
