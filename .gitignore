@@ -3,6 +3,9 @@ contracts/target/
 casino_contracts/target/
 .snfoundry_cache/
 
+# Node
+node_modules/
+
 # Frontend
 client/node_modules/
 client/dist/
