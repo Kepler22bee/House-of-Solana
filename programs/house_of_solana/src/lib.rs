@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 use ephemeral_rollups_sdk::anchor::{commit, delegate, ephemeral};
 use ephemeral_rollups_sdk::cpi::DelegateConfig;
 use ephemeral_rollups_sdk::ephem::commit_and_undelegate_accounts;
@@ -11,11 +12,14 @@ declare_id!("11111111111111111111111111111111");
 // ===== SEEDS =====
 pub const PLAYER_SEED: &[u8] = b"player";
 pub const COIN_TOSS_SEED: &[u8] = b"coin_toss";
+pub const VAULT_SEED: &[u8] = b"vault";
 
 // ===== CONSTANTS =====
 pub const DEFAULT_BALANCE: u64 = 10_000;
 pub const MIN_BET: u64 = 100;
 pub const MAX_BET: u64 = 5_000;
+/// 1 SOL = 10,000 chips (rate in lamports per chip)
+pub const LAMPORTS_PER_CHIP: u64 = 100_000; // 0.0001 SOL per chip
 
 // ===== ENUMS =====
 
@@ -56,6 +60,8 @@ pub enum TossStatus {
 pub struct Player {
     pub authority: Pubkey,
     pub balance: u64,
+    pub total_deposited: u64,
+    pub total_withdrawn: u64,
     pub total_bets: u32,
     pub total_wins: u32,
     pub total_losses: u32,
@@ -99,6 +105,12 @@ pub enum HouseError {
     AlreadySettled,
     #[msg("Unauthorized")]
     Unauthorized,
+    #[msg("Must deposit at least some SOL")]
+    ZeroDeposit,
+    #[msg("Insufficient chip balance to cash out")]
+    InsufficientChips,
+    #[msg("Vault has insufficient SOL for withdrawal")]
+    VaultInsufficient,
 }
 
 // ===== PROGRAM =====
@@ -108,13 +120,15 @@ pub enum HouseError {
 pub mod house_of_solana {
     use super::*;
 
-    /// Initialize a new player account with starting balance
+    /// Initialize a new player account with 10,000 free chips
     pub fn initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
         let player = &mut ctx.accounts.player;
         require!(!player.initialized, HouseError::AlreadyInitialized);
 
         player.authority = ctx.accounts.authority.key();
         player.balance = DEFAULT_BALANCE;
+        player.total_deposited = 0;
+        player.total_withdrawn = 0;
         player.total_bets = 0;
         player.total_wins = 0;
         player.total_losses = 0;
@@ -124,6 +138,55 @@ pub mod house_of_solana {
         player.bump = ctx.bumps.player;
 
         msg!("Player initialized with {} chips", DEFAULT_BALANCE);
+        Ok(())
+    }
+
+    /// Buy chips with SOL. SOL goes into a program vault PDA.
+    /// Rate: 1 SOL = 10,000 chips
+    pub fn buy_chips(ctx: Context<BuyChips>, lamports: u64) -> Result<()> {
+        require!(lamports > 0, HouseError::ZeroDeposit);
+
+        // Transfer SOL from player to vault
+        system_program::transfer(
+            CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.authority.to_account_info(),
+                    to: ctx.accounts.vault.to_account_info(),
+                },
+            ),
+            lamports,
+        )?;
+
+        let chips = lamports / LAMPORTS_PER_CHIP;
+        let player = &mut ctx.accounts.player;
+        player.balance += chips;
+        player.total_deposited += lamports;
+
+        msg!("Bought {} chips for {} lamports", chips, lamports);
+        Ok(())
+    }
+
+    /// Cash out chips back to SOL. SOL comes from the vault PDA.
+    /// Rate: 10,000 chips = 1 SOL
+    pub fn cash_out(ctx: Context<CashOut>, chips: u64) -> Result<()> {
+        require!(chips > 0, HouseError::ZeroDeposit);
+
+        let player = &mut ctx.accounts.player;
+        require!(player.balance >= chips, HouseError::InsufficientChips);
+
+        let lamports = chips * LAMPORTS_PER_CHIP;
+        let vault = &ctx.accounts.vault;
+        require!(vault.lamports() >= lamports, HouseError::VaultInsufficient);
+
+        // Transfer SOL from vault to player (vault is a PDA, use invoke_signed)
+        **vault.to_account_info().try_borrow_mut_lamports()? -= lamports;
+        **ctx.accounts.authority.to_account_info().try_borrow_mut_lamports()? += lamports;
+
+        player.balance -= chips;
+        player.total_withdrawn += lamports;
+
+        msg!("Cashed out {} chips for {} lamports", chips, lamports);
         Ok(())
     }
 
@@ -300,6 +363,54 @@ pub struct InitializePlayer<'info> {
         bump,
     )]
     pub coin_toss: Account<'info, CoinToss>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct BuyChips<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, authority.key().as_ref()],
+        bump = player.bump,
+        constraint = player.authority == authority.key() @ HouseError::Unauthorized,
+    )]
+    pub player: Account<'info, Player>,
+
+    /// CHECK: Vault PDA that holds deposited SOL
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    pub vault: AccountInfo<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct CashOut<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [PLAYER_SEED, authority.key().as_ref()],
+        bump = player.bump,
+        constraint = player.authority == authority.key() @ HouseError::Unauthorized,
+    )]
+    pub player: Account<'info, Player>,
+
+    /// CHECK: Vault PDA that holds deposited SOL
+    #[account(
+        mut,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    pub vault: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
