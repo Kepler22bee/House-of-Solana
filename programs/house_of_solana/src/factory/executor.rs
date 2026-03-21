@@ -2,7 +2,7 @@ use crate::state::card_from_random;
 use super::primitives::*;
 use super::state::*;
 
-const MAX_ITERATIONS: u8 = 64; // prevent infinite loops
+use super::state::MAX_ITERATIONS;
 
 pub enum StepResult {
     Continue,
@@ -293,6 +293,14 @@ pub fn execute_steps(
 
             GameAction::ResetValues { target } => {
                 get_values_mut(session, target).clear();
+                session.current_step += 1;
+            }
+
+            // Multiplayer-only actions — skip in single-player executor
+            GameAction::DealToSeat { .. }
+            | GameAction::AwaitTurn { .. }
+            | GameAction::CompareSeats
+            | GameAction::PayoutSeat { .. } => {
                 session.current_step += 1;
             }
         }

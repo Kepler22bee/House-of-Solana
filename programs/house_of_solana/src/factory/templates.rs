@@ -15,9 +15,23 @@ pub fn handle_create_template(
     max_bet: u64,
     creator_fee_bps: u16,
 ) -> Result<()> {
-    require!(steps.len() <= MAX_STEPS, HouseError::BetTooLarge); // reuse error
+    require!(steps.len() > 0 && steps.len() <= MAX_STEPS, HouseError::BetTooLarge);
     require!(min_bet > 0 && max_bet >= min_bet, HouseError::BetTooSmall);
     require!(creator_fee_bps <= 2000, HouseError::BetTooLarge); // max 20% creator fee
+
+    // Validate no step references out-of-bounds jumps
+    for step in &steps {
+        match step {
+            crate::factory::primitives::GameAction::Jump { step: s } => {
+                require!((*s as usize) < steps.len(), HouseError::BetTooLarge);
+            }
+            crate::factory::primitives::GameAction::CheckChoice { jump_if_yes, jump_if_no, .. } => {
+                require!((*jump_if_yes as usize) < steps.len(), HouseError::BetTooLarge);
+                require!((*jump_if_no as usize) < steps.len(), HouseError::BetTooLarge);
+            }
+            _ => {}
+        }
+    }
 
     let template = &mut ctx.accounts.template;
     template.id = id;

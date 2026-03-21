@@ -1,14 +1,25 @@
 use anchor_lang::prelude::*;
 use super::primitives::GameAction;
 
-pub const MAX_STEPS: usize = 32;
-pub const MAX_VALUES: usize = 16;
-pub const MAX_COUNTERS: usize = 4;
-pub const HOUSE_FEE_BPS: u16 = 500; // 5% of volume
+// === HARD CAPS ===
+// Agent level — limits what agents can create
+pub const MAX_STEPS: usize = 16;      // max actions per game template
+pub const MAX_VALUES: usize = 10;     // max cards/dice per hand
+pub const MAX_COUNTERS: usize = 4;    // general purpose counters
+pub const MAX_SEATS: u8 = 2;          // max players per table
+
+// Program level — limits runtime execution
+pub const MAX_ITERATIONS: u8 = 32;    // max steps executed per VRF callback
+pub const MAX_VRF_BYTES: usize = 32;  // randomness bytes available per callback
+pub const TURN_TIMEOUT_SECS: i64 = 30;
+
+// Fees
+pub const HOUSE_FEE_BPS: u16 = 500;   // 5% of volume
 
 pub const TEMPLATE_SEED: &[u8] = b"template";
 pub const SESSION_SEED: &[u8] = b"session";
 pub const PROPOSAL_SEED: &[u8] = b"proposal";
+pub const TABLE_SEED: &[u8] = b"table";
 pub const CREATOR_VAULT_SEED: &[u8] = b"creator_vault";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
@@ -35,7 +46,7 @@ pub struct GameTemplate {
     pub co_creator: Pubkey, // Pubkey::default() if solo
     pub name: [u8; 32],
     pub description: [u8; 128],
-    #[max_len(32)]
+    #[max_len(16)]
     pub steps: Vec<GameAction>,
     pub min_bet: u64,
     pub max_bet: u64,
@@ -76,7 +87,7 @@ pub struct GameProposal {
     pub co_creator: Pubkey,
     pub name: [u8; 32],
     pub description: [u8; 128],
-    #[max_len(32)]
+    #[max_len(16)]
     pub steps: Vec<GameAction>,
     pub min_bet: u64,
     pub max_bet: u64,
@@ -97,5 +108,39 @@ pub struct CreatorFeeVault {
     pub accumulated_fees: u64,
     pub creator_claimed: u64,
     pub co_creator_claimed: u64,
+    pub bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, PartialEq, Eq, InitSpace)]
+pub enum TableStatus {
+    WaitingSeat,
+    Active,
+    WaitingVrf,
+    WaitingTurn,
+    Settled,
+}
+
+#[account]
+#[derive(InitSpace)]
+pub struct Table {
+    pub id: u64,
+    pub template: Pubkey,
+    pub seat1: Pubkey,
+    pub seat2: Pubkey,
+    #[max_len(16)]
+    pub seat1_values: Vec<u8>,
+    #[max_len(16)]
+    pub seat2_values: Vec<u8>,
+    #[max_len(16)]
+    pub shared_values: Vec<u8>,
+    pub pot: u64,
+    pub seat1_bet: u64,
+    pub seat2_bet: u64,
+    pub current_turn: u8,
+    pub current_step: u8,
+    pub last_choice: [u8; 2],
+    pub status: TableStatus,
+    pub winner: u8,
+    pub turn_deadline: i64,
     pub bump: u8,
 }

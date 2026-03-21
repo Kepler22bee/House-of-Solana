@@ -73,6 +73,12 @@ pub enum GameAction {
     SetCounter { id: u8, value: u8 },
     IncrementCounter { id: u8 },
     ResetValues { target: Target },
+
+    // === Multiplayer ===
+    DealToSeat { seat: u8, count: u8, visibility: Visibility },
+    AwaitTurn { seat: u8 },
+    CompareSeats,
+    PayoutSeat { seat: u8, multiplier_bps: u16 },
 }
 
 /// Choice bits for AwaitChoice options_mask

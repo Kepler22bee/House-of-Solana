@@ -118,6 +118,23 @@ pub mod house_of_solana {
         factory::negotiation::handle_reject_proposal(ctx)
     }
 
+    // ===== MULTIPLAYER TABLES =====
+    pub fn create_table(ctx: Context<CreateTable>, id: u64, bet_amount: u64) -> Result<()> {
+        factory::multiplayer::handle_create_table(ctx, id, bet_amount)
+    }
+    pub fn join_table(ctx: Context<JoinTable>) -> Result<()> {
+        factory::multiplayer::handle_join_table(ctx)
+    }
+    pub fn table_callback(ctx: Context<TableCallback>, randomness: [u8; 32]) -> Result<()> {
+        factory::multiplayer::handle_table_callback(ctx, randomness)
+    }
+    pub fn table_action(ctx: Context<TableAction>, choice_bit: u8) -> Result<()> {
+        factory::multiplayer::handle_table_action(ctx, choice_bit)
+    }
+    pub fn table_timeout(ctx: Context<TableTimeout>) -> Result<()> {
+        factory::multiplayer::handle_table_timeout(ctx)
+    }
+
     // ===== DELEGATION =====
     pub fn delegate_player(ctx: Context<DelegatePda>) -> Result<()> {
         instructions::delegation::handle_delegate_player(ctx)
