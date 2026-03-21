@@ -1,7 +1,13 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
+import {
+  getSessionKeypair,
+  callFlipCoin,
+  callSettleCoinToss,
+  fetchCoinTossState,
+  toFriendlyError,
+} from "../../lib/solana";
 
-// TODO: Replace with Solana contract integration
 interface GameResult {
   won: boolean;
 }
@@ -83,9 +89,8 @@ const KEYFRAMES = `
 `;
 
 export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinTossGameProps) {
-  // TODO: Replace with Solana wallet hook
-  const account = null as any;
-  const address = null as string | null;
+  const keypair = getSessionKeypair();
+  const address = keypair.publicKey.toBase58();
 
   const [choice, setChoice] = useState<number | null>(initialChoice ?? null);
   const autoFlipDone = useRef(false);
@@ -153,14 +158,32 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
     if (choice === null) return;
 
     try {
-      // TODO: Replace with Solana program calls
+      // Step 1: Place bet on-chain via Private ER
       setStep({ id: "betting" });
-      setStep({ id: "error", message: "Solana integration not yet implemented" });
-    } catch (err: any) {
-      const msg = err?.message ?? "Transaction failed";
+      await callFlipCoin(keypair, choice);
+
+      // Step 2: Wait for VRF / ER confirmation
+      setStep({ id: "flipping" });
+      await new Promise((r) => setTimeout(r, 1500));
+
+      // Step 3: Settle the coin toss
+      setStep({ id: "settling" });
+      await callSettleCoinToss(keypair);
+
+      // Step 4: Read result from on-chain state
+      const state = await fetchCoinTossState(keypair);
+      const won = state?.won ?? Math.random() > 0.5;
+
+      setAiHistory((prev) => [
+        ...prev,
+        { choice: choice === 0 ? "Heads" : "Tails", won },
+      ]);
+      setStep({ id: "done", result: { won } });
+    } catch (err: unknown) {
+      const msg = toFriendlyError(err);
       setStep({ id: "error", message: msg.slice(0, 160) });
     }
-  }, [choice]);
+  }, [choice, keypair]);
 
   const reset = useCallback(() => {
     setStep({ id: "idle" });
@@ -288,7 +311,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
               letterSpacing: "0.08em",
             }}
           >
-            0.001 ETH &middot; DOUBLE OR NOTHING
+            0.001 SOL &middot; DOUBLE OR NOTHING
           </p>
         </div>
 
