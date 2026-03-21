@@ -6,12 +6,14 @@ pub mod errors;
 pub mod state;
 pub mod games;
 pub mod instructions;
+pub mod factory;
 
 pub use constants::*;
 pub use errors::*;
 pub use state::*;
 pub use games::*;
 pub use instructions::*;
+pub use factory::*;
 
 declare_id!("8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg");
 
@@ -68,6 +70,52 @@ pub mod house_of_solana {
     }
     pub fn callback_stand(ctx: Context<CallbackBlackjack>, randomness: [u8; 32]) -> Result<()> {
         games::blackjack::handle_callback_stand(ctx, randomness)
+    }
+
+    // ===== GAME FACTORY =====
+    pub fn create_template(
+        ctx: Context<CreateTemplate>,
+        id: u64,
+        name: [u8; 32],
+        description: [u8; 128],
+        steps: Vec<factory::primitives::GameAction>,
+        min_bet: u64,
+        max_bet: u64,
+        creator_fee_bps: u16,
+    ) -> Result<()> {
+        factory::templates::handle_create_template(ctx, id, name, description, steps, min_bet, max_bet, creator_fee_bps)
+    }
+    pub fn deactivate_template(ctx: Context<DeactivateTemplate>) -> Result<()> {
+        factory::templates::handle_deactivate_template(ctx)
+    }
+    pub fn start_game(ctx: Context<StartGame>, bet_amount: u64) -> Result<()> {
+        factory::gameplay::handle_start_game(ctx, bet_amount)
+    }
+    pub fn callback_game(ctx: Context<CallbackGame>, randomness: [u8; 32]) -> Result<()> {
+        factory::gameplay::handle_callback_game(ctx, randomness)
+    }
+    pub fn player_choice(ctx: Context<PlayerChoice>, choice_bit: u8) -> Result<()> {
+        factory::gameplay::handle_player_choice(ctx, choice_bit)
+    }
+    pub fn propose_game(
+        ctx: Context<ProposeGame>,
+        id: u64,
+        co_creator: Pubkey,
+        name: [u8; 32],
+        description: [u8; 128],
+        steps: Vec<factory::primitives::GameAction>,
+        min_bet: u64,
+        max_bet: u64,
+        creator_fee_bps: u16,
+        fee_split_bps: u16,
+    ) -> Result<()> {
+        factory::negotiation::handle_propose_game(ctx, id, co_creator, name, description, steps, min_bet, max_bet, creator_fee_bps, fee_split_bps)
+    }
+    pub fn accept_proposal(ctx: Context<AcceptProposal>) -> Result<()> {
+        factory::negotiation::handle_accept_proposal(ctx)
+    }
+    pub fn reject_proposal(ctx: Context<RejectProposal>) -> Result<()> {
+        factory::negotiation::handle_reject_proposal(ctx)
     }
 
     // ===== DELEGATION =====
