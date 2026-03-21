@@ -3,6 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { PublicKey, Keypair, LAMPORTS_PER_SOL, SystemProgram } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg");
+const PERMISSION_PROGRAM_ID = new PublicKey("BTWAqWNBmF2TboMh3fxMJfgR16xGHYD7Kgr2dPwbRPBi");
 const PLAYER_SEED = "player";
 const COIN_TOSS_SEED = "coin_toss";
 const VAULT_SEED = "vault";
@@ -77,6 +78,37 @@ async function main() {
     }
   }
 
+  // 1.5. Setup Permissions (Private ER)
+  console.log("\n--- Setup Permissions ---");
+  const [groupPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("group:"), player.publicKey.toBuffer()],
+    PERMISSION_PROGRAM_ID
+  );
+  const [permissionCoinTossPDA] = PublicKey.findProgramAddressSync(
+    [Buffer.from("permission:"), coinTossPDA.toBuffer()],
+    PERMISSION_PROGRAM_ID
+  );
+  try {
+    const tx = await (program.methods as any)
+      .setupPermissions()
+      .accounts({
+        authority: player.publicKey,
+        coinToss: coinTossPDA,
+        group: groupPDA,
+        permissionCoinToss: permissionCoinTossPDA,
+        permissionProgram: PERMISSION_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+    console.log("Setup permissions tx:", tx);
+  } catch (e: any) {
+    if (e.message?.includes("already in use")) {
+      console.log("Permissions already set up");
+    } else {
+      console.error("Setup permissions failed:", e.message?.slice(0, 200));
+    }
+  }
+
   // Fetch player state
   let playerState = await (program.account as any).player.fetch(playerPDA);
   console.log("Balance:", playerState.balance.toString(), "chips");
@@ -104,38 +136,55 @@ async function main() {
     console.error("Buy chips failed:", e.message?.slice(0, 200));
   }
 
-  // 3. Flip Coin (bet 100 chips on heads)
-  console.log("\n--- Flip Coin (100 chips on Heads) ---");
-  try {
-    const tx = await (program.methods as any)
-      .flipCoin(0, new anchor.BN(100))
-      .accounts({
-        authority: player.publicKey,
-        player: playerPDA,
-        coinToss: coinTossPDA,
-        oracleQueue: new PublicKey("Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"),
-        systemProgram: SystemProgram.programId,
-      })
-      .rpc();
-    console.log("Flip tx:", tx);
+  // 3. Flip Coins — run multiple to see both wins and losses
+  const oracleQueue = new PublicKey("Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh");
+  const NUM_FLIPS = 5;
 
-    // Wait for VRF callback
-    console.log("Waiting for VRF callback...");
-    for (let i = 0; i < 20; i++) {
-      await new Promise(r => setTimeout(r, 1000));
-      const toss = await (program.account as any).coinToss.fetch(coinTossPDA);
-      const status = Object.keys(toss.status)[0];
-      if (status === "settled") {
-        console.log("Result:", toss.result === 0 ? "Heads" : "Tails");
-        console.log("Won:", toss.won);
-        playerState = await (program.account as any).player.fetch(playerPDA);
-        console.log("Balance after flip:", playerState.balance.toString(), "chips");
-        break;
+  for (let flip = 1; flip <= NUM_FLIPS; flip++) {
+    const choice = flip % 2; // alternate heads/tails
+    const side = choice === 0 ? "Heads" : "Tails";
+    console.log(`\n--- Flip #${flip}: 100 chips on ${side} ---`);
+
+    // Get balance before
+    playerState = await (program.account as any).player.fetch(playerPDA);
+    const balBefore = Number(playerState.balance);
+
+    try {
+      const tx = await (program.methods as any)
+        .flipCoin(choice, new anchor.BN(100))
+        .accounts({
+          authority: player.publicKey,
+          player: playerPDA,
+          coinToss: coinTossPDA,
+          oracleQueue,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc();
+      console.log("Flip tx:", tx);
+
+      // Wait for VRF callback
+      process.stdout.write("Waiting for VRF");
+      let settled = false;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const toss = await (program.account as any).coinToss.fetch(coinTossPDA);
+        const status = Object.keys(toss.status)[0];
+        if (status === "settled") {
+          settled = true;
+          const resultSide = toss.result === 0 ? "Heads" : "Tails";
+          playerState = await (program.account as any).player.fetch(playerPDA);
+          const balAfter = Number(playerState.balance);
+          const diff = balAfter - balBefore;
+          console.log(`\n  Chose: ${side} | Result: ${resultSide} | Won: ${toss.won}`);
+          console.log(`  Balance: ${balBefore} → ${balAfter} (${diff >= 0 ? "+" : ""}${diff})`);
+          break;
+        }
+        process.stdout.write(".");
       }
-      process.stdout.write(".");
+      if (!settled) console.log("\n  VRF callback timeout!");
+    } catch (e: any) {
+      console.error("Flip failed:", e.message?.slice(0, 200));
     }
-  } catch (e: any) {
-    console.error("Flip failed:", e.message?.slice(0, 200));
   }
 
   // 4. Cash Out (500 chips)
