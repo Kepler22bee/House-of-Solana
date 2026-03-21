@@ -24,9 +24,8 @@ import { txPending, txConfirmed, txError } from "./txlog";
 
 // ===== CONSTANTS =====
 
-// Placeholder — replace with actual deployed program ID
 const PROGRAM_ID = new PublicKey(
-  "11111111111111111111111111111111"
+  "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
 );
 
 const BASE_RPC_URL = "https://api.devnet.solana.com";
@@ -615,7 +614,7 @@ export async function callCashOut(
 
 // VRF Oracle Queue (MagicBlock default)
 const VRF_ORACLE_QUEUE = new PublicKey(
-  "oraaborPnkaKQ9MmQYaGQbsMfuYoh4LZdWJX4zhMyLk"
+  "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
 );
 
 export async function callFlipCoin(
