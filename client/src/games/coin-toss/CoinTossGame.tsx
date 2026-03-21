@@ -3,8 +3,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   getSessionKeypair,
   callFlipCoin,
-  callSettleCoinToss,
-  fetchCoinTossState,
+  waitForCoinTossResult,
   toFriendlyError,
 } from "../../lib/solana";
 
@@ -158,21 +157,17 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
     if (choice === null) return;
 
     try {
-      // Step 1: Place bet on-chain via Private ER
+      // Step 1: Place bet + request VRF randomness on Private ER
       setStep({ id: "betting" });
       await callFlipCoin(keypair, choice);
 
-      // Step 2: Wait for VRF / ER confirmation
+      // Step 2: Wait for VRF oracle callback to settle
       setStep({ id: "flipping" });
-      await new Promise((r) => setTimeout(r, 1500));
+      const { won } = await waitForCoinTossResult(keypair);
 
-      // Step 3: Settle the coin toss
+      // Step 3: Done — VRF callback already settled the toss
       setStep({ id: "settling" });
-      await callSettleCoinToss(keypair);
-
-      // Step 4: Read result from on-chain state
-      const state = await fetchCoinTossState(keypair);
-      const won = state?.won ?? Math.random() > 0.5;
+      await new Promise((r) => setTimeout(r, 300));
 
       setAiHistory((prev) => [
         ...prev,
