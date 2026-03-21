@@ -35,13 +35,17 @@ const DELEGATION_PROGRAM_ID = new PublicKey(
   "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
 );
 const PERMISSION_PROGRAM_ID = new PublicKey(
-  "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+  "BTWAqWNBmF2TboMh3fxMJfgR16xGHYD7Kgr2dPwbRPBi"
 );
 const MAGIC_PROGRAM_ID = new PublicKey(
   "Magic11111111111111111111111111111111111111"
 );
 const MAGIC_CONTEXT_ID = new PublicKey(
   "MagicContext1111111111111111111111111111111"
+);
+// TEE validator for devnet Private ERs
+const TEE_VALIDATOR = new PublicKey(
+  "FnE6VJT5QNZdedZPnCoLsARgBwoE6DeJNjBs2H1gySXA"
 );
 
 const PLAYER_SEED = "player";
@@ -332,6 +336,20 @@ export function getPlayerPDA(player: PublicKey): [PublicKey, number] {
   );
 }
 
+export function getGroupPDA(id: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("group:"), id.toBuffer()],
+    PERMISSION_PROGRAM_ID
+  );
+}
+
+export function getPermissionPDA(account: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("permission:"), account.toBuffer()],
+    PERMISSION_PROGRAM_ID
+  );
+}
+
 export function getVaultPDA(): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [Buffer.from("vault")],
@@ -373,6 +391,9 @@ async function delegatePda(
           payer: keypair.publicKey,
           pda,
         })
+        .remainingAccounts([
+          { pubkey: TEE_VALIDATOR, isSigner: false, isWritable: false },
+        ])
         .rpc()
     );
     txConfirmed(id, "delegated");
@@ -542,6 +563,41 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
     return tx;
   } catch (e) {
     const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callSetupPermissions(keypair: Keypair): Promise<string> {
+  const id = txPending("Setup Permissions");
+  try {
+    const program = getProgram(keypair, "base");
+    const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
+    const [groupPDA] = getGroupPDA(keypair.publicKey);
+    const [permissionPDA] = getPermissionPDA(coinTossPDA);
+
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .setupPermissions()
+        .accounts({
+          authority: keypair.publicKey,
+          coinToss: coinTossPDA,
+          group: groupPDA,
+          permissionCoinToss: permissionPDA,
+          permissionProgram: PERMISSION_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    if (msg.includes("already in use")) {
+      txConfirmed(id, "already-setup");
+      return "already-setup";
+    }
     txError(id, msg.slice(0, 80));
     throw e;
   }
