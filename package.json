@@ -1,0 +1,30 @@
+{
+  "name": "house-of-solana",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kepler22bee/House-of-Solana.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Kepler22bee/House-of-Solana/issues"
+  },
+  "homepage": "https://github.com/Kepler22bee/House-of-Solana#readme",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@magicblock-labs/ephemeral-rollups-sdk": "^0.10.0",
+    "@solana/web3.js": "^1.98.4",
+    "tweetnacl": "^1.0.3"
+  }
+}
