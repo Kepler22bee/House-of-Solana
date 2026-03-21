@@ -1,0 +1,105 @@
+{
+  "version": "0.1.0",
+  "name": "house_of_solana",
+  "address": "11111111111111111111111111111111",
+  "metadata": {
+    "name": "house_of_solana",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "initialize_player",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 1],
+      "accounts": [
+        { "name": "player", "writable": true, "signer": true },
+        { "name": "game_state", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "flip_coin",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 2],
+      "accounts": [
+        { "name": "player", "writable": true, "signer": true },
+        { "name": "game_state", "writable": true },
+        { "name": "coin_toss_state", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "choice", "type": "u8" },
+        { "name": "bet_amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "settle_coin_toss",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 3],
+      "accounts": [
+        { "name": "player", "writable": true, "signer": true },
+        { "name": "game_state", "writable": true },
+        { "name": "coin_toss_state", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_game",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 4],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "undelegate_game",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 5],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true },
+        { "name": "magic_program" },
+        { "name": "magic_context" }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "GameState",
+      "discriminator": [0, 0, 0, 0, 0, 0, 1, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "player", "type": "publicKey" },
+          { "name": "balance", "type": "u64" },
+          { "name": "total_bets", "type": "u32" },
+          { "name": "total_wins", "type": "u32" },
+          { "name": "initialized", "type": "bool" }
+        ]
+      }
+    },
+    {
+      "name": "CoinTossState",
+      "discriminator": [0, 0, 0, 0, 0, 0, 2, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "player", "type": "publicKey" },
+          { "name": "choice", "type": "u8" },
+          { "name": "result", "type": "u8" },
+          { "name": "bet_amount", "type": "u64" },
+          { "name": "won", "type": "bool" },
+          { "name": "settled", "type": "bool" }
+        ]
+      }
+    }
+  ],
+  "types": [],
+  "errors": [
+    { "code": 6000, "name": "AlreadyInitialized", "msg": "Player already initialized" },
+    { "code": 6001, "name": "InvalidChoice", "msg": "Choice must be 0 (heads) or 1 (tails)" },
+    { "code": 6002, "name": "BetTooLarge", "msg": "Bet amount exceeds balance" },
+    { "code": 6003, "name": "AlreadySettled", "msg": "Coin toss already settled" },
+    { "code": 6004, "name": "NotSettled", "msg": "Coin toss not yet settled" }
+  ]
+}
