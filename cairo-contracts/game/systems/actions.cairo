@@ -1,0 +1,224 @@
+// -- Dojo Systems --
+// Each fn is a transaction entry point callable from the client via provider.execute().
+
+use starter::models::{Direction, Player, Tile};
+
+const GRID_MAX: u8 = 9;
+const START_HEALTH: u8 = 100;
+const WIN_GOLD: u32 = 100;
+const GOLD_REWARD: u32 = 10;
+const BOMB_DAMAGE: u8 = 10;
+
+// Defines the public ABI. Dojo generates a dispatcher from this for tests and clients.
+#[starknet::interface]
+pub trait IActions<T> {
+    fn spawn(ref self: T);
+    fn move(ref self: T, direction: Direction);
+    fn dig(ref self: T);
+}
+
+#[dojo::contract]
+pub mod actions {
+    use super::{
+        IActions, Direction, Player, Tile, next_position, has_content, dig_outcome, is_dug, set_dug,
+        START_HEALTH, WIN_GOLD, GOLD_REWARD, BOMB_DAMAGE,
+    };
+    use starknet::{get_caller_address, get_block_timestamp};
+    use dojo::model::ModelStorage;
+    use dojo::event::EventStorage;
+
+    // Events are indexed by Torii like models, but append-only. #[key] determines entity grouping.
+    #[derive(Copy, Drop, Serde)]
+    #[dojo::event]
+    pub struct Moved {
+        #[key]
+        pub player: starknet::ContractAddress,
+        pub direction: Direction,
+        pub x: u8,
+        pub y: u8,
+        pub health: u8,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    #[dojo::event]
+    pub struct Dug {
+        #[key]
+        pub player: starknet::ContractAddress,
+        pub x: u8,
+        pub y: u8,
+        pub tile: Tile,
+        pub gold: u32,
+        pub health: u8,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    #[dojo::event]
+    pub struct LevelUp {
+        #[key]
+        pub player: starknet::ContractAddress,
+        pub level: u32,
+        pub gold: u32,
+    }
+
+    #[derive(Copy, Drop, Serde)]
+    #[dojo::event]
+    pub struct GameOver {
+        #[key]
+        pub player: starknet::ContractAddress,
+        pub level: u32,
+    }
+
+    // embed_v0 exposes these functions as external entry points on the deployed contract.
+    #[abi(embed_v0)]
+    impl ActionsImpl of IActions<ContractState> {
+        fn spawn(ref self: ContractState) {
+            let mut world = self.world_default();
+            let player = get_caller_address();
+            // read_model looks up Player by its #[key]; returns zero-initialized if not found.
+            let existing: Player = world.read_model(player);
+            // write_model upserts — creates or overwrites the model in world storage.
+            world
+                .write_model(
+                    @Player {
+                        player,
+                        x: 0,
+                        y: 0,
+                        health: START_HEALTH,
+                        gold: 0,
+                        level: 1,
+                        dug: 0,
+                        best: existing.best,
+                    },
+                );
+        }
+
+        fn move(ref self: ContractState, direction: Direction) {
+            let mut world = self.world_default();
+            let player = get_caller_address();
+            let mut p: Player = world.read_model(player);
+            assert!(p.health > 0, "game over");
+
+            let (nx, ny) = next_position(p.x, p.y, direction);
+            p.x = nx;
+            p.y = ny;
+            p.health = if p.health > 1 { p.health - 1 } else { 0 };
+
+            world.write_model(@p);
+            // Torii indexes emitted events and pushes them to subscribed clients in real time.
+            world.emit_event(@Moved { player, direction, x: p.x, y: p.y, health: p.health });
+
+            if p.health == 0 {
+                world.emit_event(@GameOver { player, level: p.level });
+            }
+        }
+
+        fn dig(ref self: ContractState) {
+            let mut world = self.world_default();
+            let player = get_caller_address();
+            let mut p: Player = world.read_model(player);
+            assert!(p.health > 0, "game over");
+            assert!(has_content(player, p.level, p.x, p.y), "nothing here");
+            assert!(!is_dug(p.dug, p.x, p.y), "already dug");
+
+            p.dug = set_dug(p.dug, p.x, p.y);
+
+            // Block timestamp provides entropy only available at execution time (layer-2 randomness).
+            let t = dig_outcome(player, p.x, p.y, get_block_timestamp(), p.level);
+            if t == Tile::Gold {
+                p.gold += GOLD_REWARD;
+                if p.gold > p.best {
+                    p.best = p.gold;
+                }
+            } else {
+                p.health = if p.health > BOMB_DAMAGE { p.health - BOMB_DAMAGE } else { 0 };
+            }
+
+            world.write_model(@p);
+            world
+                .emit_event(
+                    @Dug { player, x: p.x, y: p.y, tile: t, gold: p.gold, health: p.health },
+                );
+
+            if p.health == 0 {
+                world.emit_event(@GameOver { player, level: p.level });
+                return;
+            }
+
+            // Level up: new level changes the content map (different hash inputs) and increases bomb probability.
+            if p.gold >= p.level * WIN_GOLD {
+                p.level += 1;
+                p.health = START_HEALTH;
+                p.x = 0;
+                p.y = 0;
+                p.dug = 0;
+                world.write_model(@p);
+                world.emit_event(@LevelUp { player, level: p.level, gold: p.gold });
+            }
+        }
+    }
+
+    // world_default binds this contract to the "starter" namespace for all model reads/writes.
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn world_default(self: @ContractState) -> dojo::world::WorldStorage {
+            self.world(@"starter")
+        }
+    }
+}
+
+// Layer 1 of two-layer randomness: deterministic — same inputs always give the same result.
+// The client mirrors this function exactly to render the grid without a network call.
+pub fn has_content(player: starknet::ContractAddress, level: u32, x: u8, y: u8) -> bool {
+    let hash = core::poseidon::poseidon_hash_span(
+        [player.into(), level.into(), x.into(), y.into()].span(),
+    );
+    let bucket: u256 = hash.into() & 0xff;
+    let b: u8 = bucket.try_into().unwrap();
+    b < 51 // 51/256 ≈ 20%
+}
+
+// Layer 2 of two-layer randomness: uses block timestamp, so the outcome is unknown
+// until the transaction executes. This prevents the client from predicting dig results.
+pub fn dig_outcome(
+    player: starknet::ContractAddress, x: u8, y: u8, timestamp: u64, level: u32,
+) -> Tile {
+    let hash = core::poseidon::poseidon_hash_span(
+        [player.into(), x.into(), y.into(), timestamp.into()].span(),
+    );
+    if level >= 10 { return Tile::Bomb; }
+    let b: u256 = hash.into() % 10;
+    if b < (10 - level).into() { Tile::Gold } else { Tile::Bomb }
+}
+
+// Bitmap ops — packs 100 tile states (10x10 grid) into one felt252. Bit index = y*10+x.
+fn is_dug(dug: felt252, x: u8, y: u8) -> bool {
+    let idx: u8 = y * 10 + x;
+    let d: u256 = dug.into();
+    (d / pow2(idx)) % 2 == 1
+}
+
+fn set_dug(dug: felt252, x: u8, y: u8) -> felt252 {
+    let idx: u8 = y * 10 + x;
+    let d: u256 = dug.into();
+    let mask: u256 = pow2(idx);
+    (d | mask).try_into().unwrap()
+}
+
+fn pow2(n: u8) -> u256 {
+    let mut result: u256 = 1;
+    let mut i: u8 = 0;
+    while i < n {
+        result = result * 2;
+        i += 1;
+    };
+    result
+}
+
+fn next_position(x: u8, y: u8, direction: Direction) -> (u8, u8) {
+    match direction {
+        Direction::Left => (if x > 0 { x - 1 } else { 0 }, y),
+        Direction::Right => (if x < GRID_MAX { x + 1 } else { GRID_MAX }, y),
+        Direction::Up => (x, if y < GRID_MAX { y + 1 } else { GRID_MAX }),
+        Direction::Down => (x, if y > 0 { y - 1 } else { 0 }),
+    }
+}

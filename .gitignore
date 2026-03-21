@@ -1,0 +1,56 @@
+# Cairo contracts (reference only)
+contracts/target/
+casino_contracts/target/
+.snfoundry_cache/
+
+# Frontend
+client/node_modules/
+client/dist/
+.pnpm-store/
+*.tsbuildinfo
+
+# Playwright
+client/test-results/
+
+# Environment
+.env
+.env.local
+
+# Context (Conductor)
+.context/
+target/
+
+# Skills
+.agents/
+.adal/
+.agent/
+.augment/
+.claude/
+.codebuddy/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills/
+skills-lock.json
+.next/

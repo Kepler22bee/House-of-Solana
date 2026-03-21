@@ -1,0 +1,170 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "done.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "Bridges.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Esoteric.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Floors.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Floors_Tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Pan_01-Sheet.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Props.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Rocks.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Shadows.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Size_02.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Size_03.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "TiledProjects/done.tmx": {
+            "scale": 1.04975,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 393.42700643010244,
+                "y": 409.14503453203145
+            }
+        },
+        "TiledProjects/done.tmx#Bridges": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Floors_Tiles": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Props": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Rocks": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Size_02": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Size_03": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Vegetation": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Wall_Tiles": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Wall_Variations": {
+            "scaleInDock": 1
+        },
+        "TiledProjects/done.tmx#Water_tiles": {
+            "scaleInDock": 1
+        },
+        "Vegetation.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Wall_Tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Wall_Variations.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Walls.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Water_tiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "done.tmx": {
+            "scale": 1.10675,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 443.6412920713802,
+                "y": 400.72283713575786
+            }
+        },
+        "gametiles.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "house_details.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "spr_tileset_sunnysideworld_16px.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "spr_tileset_sunnysideworld_forest_32px.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "strokevillage0009.tsx": {
+            "scaleInDock": 0.0625,
+            "scaleInEditor": 1
+        }
+    },
+    "last.exportedFilePath": "/home/sensei/Downloads",
+    "last.imagePath": "/home/sensei/Downloads/craftpix-net-504452-free-village-pixel-tileset-for-top-down-defense/2 Objects/6 Tent",
+    "map.height": 50,
+    "map.lastUsedExportFilter": "All Files (*)",
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 16,
+    "openFiles": [
+        "Bridges.tsx",
+        "done.tmx"
+    ],
+    "project": "wow.tiled-project",
+    "recentFiles": [
+        "house_details.tsx",
+        "strokevillage0009.tsx",
+        "Water_tiles.tsx",
+        "Pan_01-Sheet.tsx",
+        "spr_tileset_sunnysideworld_16px.tsx",
+        "TiledProjects/done.tmx",
+        "spr_tileset_sunnysideworld_forest_32px.tsx",
+        "Bridges.tsx",
+        "done.tmx",
+        "Size_03.tsx",
+        "Size_02.tsx",
+        "Esoteric.tsx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
