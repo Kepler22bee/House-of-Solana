@@ -333,6 +333,13 @@ export function getPlayerPDA(player: PublicKey): [PublicKey, number] {
   );
 }
 
+export function getVaultPDA(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vault")],
+    PROGRAM_ID
+  );
+}
+
 export function getCoinTossStatePDA(player: PublicKey): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [Buffer.from(COIN_TOSS_SEED), player.toBuffer()],
@@ -528,6 +535,71 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
           authority: keypair.publicKey,
           player: playerPDA,
           coinToss: coinTossPDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+// Rate: 1 SOL = 10,000 chips
+const LAMPORTS_PER_CHIP = 100_000;
+
+export async function callBuyChips(
+  keypair: Keypair,
+  solAmount: number // in SOL (e.g. 0.1)
+): Promise<string> {
+  const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
+  const chips = lamports / LAMPORTS_PER_CHIP;
+  const id = txPending(`Buy ${chips} chips`);
+  try {
+    const program = getProgram(keypair, "base");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [vaultPDA] = getVaultPDA();
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .buyChips(new BN(lamports))
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          vault: vaultPDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callCashOut(
+  keypair: Keypair,
+  chips: number
+): Promise<string> {
+  const id = txPending(`Cash out ${chips} chips`);
+  try {
+    const program = getProgram(keypair, "base");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [vaultPDA] = getVaultPDA();
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .cashOut(new BN(chips))
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          vault: vaultPDA,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
