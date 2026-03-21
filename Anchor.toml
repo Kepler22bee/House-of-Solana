@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-house_of_solana = "11111111111111111111111111111111"
+house_of_solana = "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
 
 [programs.localnet]
-house_of_solana = "11111111111111111111111111111111"
+house_of_solana = "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
 
 [registry]
 url = "https://api.apr.dev"

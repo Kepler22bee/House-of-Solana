@@ -7,7 +7,7 @@ use ephemeral_vrf_sdk::anchor::vrf;
 use ephemeral_vrf_sdk::instructions::{create_request_randomness_ix, RequestRandomnessParams};
 use ephemeral_vrf_sdk::types::SerializableAccountMeta;
 
-declare_id!("11111111111111111111111111111111");
+declare_id!("8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg");
 
 // ===== SEEDS =====
 pub const PLAYER_SEED: &[u8] = b"player";
@@ -83,6 +83,12 @@ pub struct CoinToss {
     pub bump: u8,
 }
 
+#[account]
+#[derive(InitSpace)]
+pub struct Vault {
+    pub bump: u8,
+}
+
 // ===== ERRORS =====
 
 #[error_code]
@@ -119,6 +125,14 @@ pub enum HouseError {
 #[program]
 pub mod house_of_solana {
     use super::*;
+
+    /// Initialize the vault (one-time setup)
+    pub fn initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
+        let vault = &mut ctx.accounts.vault;
+        vault.bump = ctx.bumps.vault;
+        msg!("Vault initialized");
+        Ok(())
+    }
 
     /// Initialize a new player account with 10,000 free chips
     pub fn initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
@@ -176,11 +190,11 @@ pub mod house_of_solana {
         require!(player.balance >= chips, HouseError::InsufficientChips);
 
         let lamports = chips * LAMPORTS_PER_CHIP;
-        let vault = &ctx.accounts.vault;
-        require!(vault.lamports() >= lamports, HouseError::VaultInsufficient);
+        let vault_info = ctx.accounts.vault.to_account_info();
+        require!(vault_info.lamports() >= lamports, HouseError::VaultInsufficient);
 
-        // Transfer SOL from vault to player (vault is a PDA, use invoke_signed)
-        **vault.to_account_info().try_borrow_mut_lamports()? -= lamports;
+        // Transfer SOL from vault to player (vault is program-owned PDA)
+        **vault_info.try_borrow_mut_lamports()? -= lamports;
         **ctx.accounts.authority.to_account_info().try_borrow_mut_lamports()? += lamports;
 
         player.balance -= chips;
@@ -368,6 +382,23 @@ pub struct InitializePlayer<'info> {
 }
 
 #[derive(Accounts)]
+pub struct InitializeVault<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + Vault::INIT_SPACE,
+        seeds = [VAULT_SEED],
+        bump,
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct BuyChips<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -380,13 +411,12 @@ pub struct BuyChips<'info> {
     )]
     pub player: Account<'info, Player>,
 
-    /// CHECK: Vault PDA that holds deposited SOL
     #[account(
         mut,
         seeds = [VAULT_SEED],
-        bump,
+        bump = vault.bump,
     )]
-    pub vault: AccountInfo<'info>,
+    pub vault: Account<'info, Vault>,
 
     pub system_program: Program<'info, System>,
 }
@@ -404,13 +434,12 @@ pub struct CashOut<'info> {
     )]
     pub player: Account<'info, Player>,
 
-    /// CHECK: Vault PDA that holds deposited SOL
     #[account(
         mut,
         seeds = [VAULT_SEED],
-        bump,
+        bump = vault.bump,
     )]
-    pub vault: AccountInfo<'info>,
+    pub vault: Account<'info, Vault>,
 
     pub system_program: Program<'info, System>,
 }
@@ -432,7 +461,7 @@ pub struct FlipCoin<'info> {
     #[account(
         mut,
         seeds = [COIN_TOSS_SEED, authority.key().as_ref()],
-        bump = coin_toss.bump,
+        bump,
     )]
     pub coin_toss: Account<'info, CoinToss>,
 
