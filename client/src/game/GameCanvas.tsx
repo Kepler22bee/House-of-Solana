@@ -197,12 +197,13 @@ export default function GameCanvas() {
       return;
     }
 
-    // Handle game screen dismiss
-    if (gameScreenRef.current.active) {
+    // Handle game screen dismiss (but not factory — it uses Enter for navigation)
+    if (gameScreenRef.current.active && gameScreenRef.current.type !== "factory") {
       gameScreenRef.current = { active: false, type: null };
       setActiveGameScreen(null);
       return;
     }
+    if (gameScreenRef.current.active) return;
 
     const player = playerRef.current;
 
@@ -633,7 +634,7 @@ Keep responses under 60 words.`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          agent: "clanker",
+          agent: "player",
           messages: [
             { role: "system", content: systemPrompt },
             ...aiChatMessages.slice(-6).map(m => ({ role: m.role, content: m.text })),

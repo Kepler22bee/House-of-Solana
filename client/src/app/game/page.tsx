@@ -11,6 +11,7 @@ import {
   fetchBlackjackState,
   callInitializePlayer,
   callInitializeBlackjack,
+  callSetupPermissions,
 } from "../../lib/solana";
 import { setPlayerMoney } from "../../game/GameCanvas";
 
@@ -71,6 +72,14 @@ export default function GamePage() {
         } catch (e) {
           console.warn("[Wallet] Blackjack init failed (may already exist):", e);
         }
+      }
+
+      // Setup Private ER permissions for game accounts (coin toss + blackjack)
+      try {
+        await callSetupPermissions(keypair);
+        console.log("[Wallet] PER permissions set up");
+      } catch (e) {
+        console.warn("[Wallet] Permission setup skipped (may already exist):", e);
       }
 
       // Sync on-chain chip balance to game state

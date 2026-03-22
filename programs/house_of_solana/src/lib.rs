@@ -145,6 +145,9 @@ pub mod house_of_solana {
     pub fn delegate_blackjack(ctx: Context<DelegatePda>) -> Result<()> {
         instructions::delegation::handle_delegate_blackjack(ctx)
     }
+    pub fn delegate_session(ctx: Context<DelegatePda>) -> Result<()> {
+        instructions::delegation::handle_delegate_session(ctx)
+    }
     pub fn commit_player(ctx: Context<CommitPda>) -> Result<()> {
         instructions::delegation::handle_commit_account(ctx)
     }
@@ -153,5 +156,16 @@ pub mod house_of_solana {
     }
     pub fn commit_blackjack(ctx: Context<CommitPda>) -> Result<()> {
         instructions::delegation::handle_commit_account(ctx)
+    }
+    pub fn commit_session(ctx: Context<CommitPda>) -> Result<()> {
+        instructions::delegation::handle_commit_account(ctx)
+    }
+
+    // ===== DYNAMIC PERMISSIONS =====
+    pub fn setup_session_permission(ctx: Context<SetupSessionPermission>) -> Result<()> {
+        instructions::delegation::handle_setup_session_permission(ctx)
+    }
+    pub fn setup_table_permission(ctx: Context<SetupTablePermission>) -> Result<()> {
+        instructions::delegation::handle_setup_table_permission(ctx)
     }
 }

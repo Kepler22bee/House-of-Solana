@@ -1,594 +1,3202 @@
 {
-  "version": "0.1.0",
-  "name": "house_of_solana",
   "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg",
   "metadata": {
     "name": "house_of_solana",
     "version": "0.1.0",
-    "spec": "0.1.0"
+    "spec": "0.1.0",
+    "description": "House of Solana — on-chain casino with coin toss (VRF) on MagicBlock Private ERs"
   },
   "instructions": [
     {
-      "name": "initialize_vault",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 1],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "vault", "writable": true },
-        { "name": "system_program" }
+      "name": "accept_proposal",
+      "discriminator": [
+        33,
+        190,
+        130,
+        178,
+        27,
+        12,
+        168,
+        238
       ],
-      "args": []
-    },
-    {
-      "name": "initialize_player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 2],
       "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "coin_toss", "writable": true },
-        { "name": "blackjack", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": []
-    },
-    {
-      "name": "initialize_blackjack",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 3],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "blackjack", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": []
-    },
-    {
-      "name": "setup_permissions",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 4],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "coin_toss", "writable": true },
-        { "name": "group", "writable": true },
-        { "name": "permission_coin_toss", "writable": true },
-        { "name": "permission_program" },
-        { "name": "system_program" }
+        {
+          "name": "co_creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault pays rent for the template"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  109,
+                  112,
+                  108,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "proposal.id",
+                "account": "GameProposal"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
       ],
       "args": []
     },
     {
       "name": "buy_chips",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 5],
+      "discriminator": [
+        220,
+        21,
+        249,
+        76,
+        148,
+        60,
+        83,
+        192
+      ],
       "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "vault", "writable": true },
-        { "name": "system_program" }
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
       ],
       "args": [
-        { "name": "lamports", "type": "u64" }
-      ]
-    },
-    {
-      "name": "cash_out",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 6],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "vault", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "chips", "type": "u64" }
-      ]
-    },
-    {
-      "name": "flip_coin",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 7],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "coin_toss", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "choice", "type": "u8" },
-        { "name": "bet_amount", "type": "u64" }
-      ]
-    },
-    {
-      "name": "callback_flip_coin",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 8],
-      "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "coin_toss", "writable": true }
-      ],
-      "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
-      ]
-    },
-    {
-      "name": "start_hand",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 9],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "bet_amount", "type": "u64" }
+        {
+          "name": "lamports",
+          "type": "u64"
+        }
       ]
     },
     {
       "name": "callback_deal",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 10],
+      "discriminator": [
+        180,
+        17,
+        166,
+        178,
+        30,
+        59,
+        141,
+        223
+      ],
       "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true }
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "player",
+          "writable": true
+        },
+        {
+          "name": "blackjack",
+          "writable": true
+        }
       ],
       "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
       ]
     },
     {
-      "name": "hit",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 11],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
+      "name": "callback_flip_coin",
+      "discriminator": [
+        213,
+        168,
+        43,
+        241,
+        105,
+        189,
+        135,
+        15
       ],
-      "args": []
-    },
-    {
-      "name": "callback_hit",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 12],
       "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true }
-      ],
-      "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
-      ]
-    },
-    {
-      "name": "stand",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 13],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": []
-    },
-    {
-      "name": "callback_stand",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 14],
-      "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "blackjack", "writable": true }
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "player",
+          "writable": true
+        },
+        {
+          "name": "coin_toss",
+          "writable": true
+        }
       ],
       "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
-      ]
-    },
-    {
-      "name": "create_template",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 15],
-      "accounts": [
-        { "name": "creator", "writable": true, "signer": true },
-        { "name": "vault", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "id", "type": "u64" },
-        { "name": "name", "type": { "array": ["u8", 32] } },
-        { "name": "description", "type": { "array": ["u8", 128] } },
-        { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
-        { "name": "min_bet", "type": "u64" },
-        { "name": "max_bet", "type": "u64" },
-        { "name": "creator_fee_bps", "type": "u16" }
-      ]
-    },
-    {
-      "name": "deactivate_template",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 16],
-      "accounts": [
-        { "name": "creator", "signer": true },
-        { "name": "template", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "start_game",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 17],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "session", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "bet_amount", "type": "u64" }
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
       ]
     },
     {
       "name": "callback_game",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 18],
+      "discriminator": [
+        49,
+        162,
+        226,
+        224,
+        54,
+        86,
+        241,
+        153
+      ],
       "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "session", "writable": true },
-        { "name": "template", "writable": true }
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "player",
+          "writable": true
+        },
+        {
+          "name": "session",
+          "writable": true
+        },
+        {
+          "name": "template",
+          "writable": true
+        }
       ],
       "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
       ]
     },
     {
-      "name": "player_choice",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 19],
+      "name": "callback_hit",
+      "discriminator": [
+        63,
+        2,
+        187,
+        217,
+        17,
+        172,
+        19,
+        202
+      ],
       "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "session", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "player",
+          "writable": true
+        },
+        {
+          "name": "blackjack",
+          "writable": true
+        }
       ],
       "args": [
-        { "name": "choice_bit", "type": "u8" }
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
       ]
     },
     {
-      "name": "propose_game",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 20],
+      "name": "callback_stand",
+      "discriminator": [
+        152,
+        14,
+        175,
+        227,
+        3,
+        27,
+        140,
+        128
+      ],
       "accounts": [
-        { "name": "proposer", "writable": true, "signer": true },
-        { "name": "proposal", "writable": true },
-        { "name": "system_program" }
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "player",
+          "writable": true
+        },
+        {
+          "name": "blackjack",
+          "writable": true
+        }
       ],
       "args": [
-        { "name": "id", "type": "u64" },
-        { "name": "co_creator", "type": "publicKey" },
-        { "name": "name", "type": { "array": ["u8", 32] } },
-        { "name": "description", "type": { "array": ["u8", 128] } },
-        { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
-        { "name": "min_bet", "type": "u64" },
-        { "name": "max_bet", "type": "u64" },
-        { "name": "creator_fee_bps", "type": "u16" },
-        { "name": "fee_split_bps", "type": "u16" }
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
       ]
     },
     {
-      "name": "accept_proposal",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 21],
-      "accounts": [
-        { "name": "co_creator", "writable": true, "signer": true },
-        { "name": "proposal", "writable": true },
-        { "name": "vault", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "system_program" }
+      "name": "cash_out",
+      "discriminator": [
+        1,
+        110,
+        57,
+        58,
+        159,
+        157,
+        243,
+        192
       ],
-      "args": []
-    },
-    {
-      "name": "reject_proposal",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 22],
       "accounts": [
-        { "name": "co_creator", "signer": true },
-        { "name": "proposal", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "create_table",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 23],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "template" },
-        { "name": "table", "writable": true },
-        { "name": "system_program" }
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
       ],
       "args": [
-        { "name": "id", "type": "u64" },
-        { "name": "bet_amount", "type": "u64" }
+        {
+          "name": "chips",
+          "type": "u64"
+        }
       ]
     },
     {
-      "name": "join_table",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 24],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "seat1_player", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "table", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
+      "name": "commit_blackjack",
+      "discriminator": [
+        150,
+        227,
+        85,
+        150,
+        43,
+        75,
+        59,
+        131
       ],
-      "args": []
-    },
-    {
-      "name": "table_callback",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 25],
       "accounts": [
-        { "name": "vrf_program_identity", "signer": true },
-        { "name": "seat1_player", "writable": true },
-        { "name": "seat2_player", "writable": true },
-        { "name": "table", "writable": true },
-        { "name": "template", "writable": true }
-      ],
-      "args": [
-        { "name": "randomness", "type": { "array": ["u8", 32] } }
-      ]
-    },
-    {
-      "name": "table_action",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 26],
-      "accounts": [
-        { "name": "authority", "writable": true, "signer": true },
-        { "name": "seat1_player", "writable": true },
-        { "name": "seat2_player", "writable": true },
-        { "name": "template", "writable": true },
-        { "name": "table", "writable": true },
-        { "name": "oracle_queue", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "choice_bit", "type": "u8" }
-      ]
-    },
-    {
-      "name": "table_timeout",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 27],
-      "accounts": [
-        { "name": "authority", "signer": true },
-        { "name": "seat1_player", "writable": true },
-        { "name": "seat2_player", "writable": true },
-        { "name": "table", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "delegate_player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 28],
-      "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "delegate_coin_toss",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 29],
-      "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "delegate_blackjack",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 30],
-      "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true }
-      ],
-      "args": []
-    },
-    {
-      "name": "commit_player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 31],
-      "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true },
-        { "name": "magic_context" },
-        { "name": "magic_program" }
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
       ],
       "args": []
     },
     {
       "name": "commit_coin_toss",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 32],
+      "discriminator": [
+        26,
+        79,
+        150,
+        45,
+        203,
+        141,
+        180,
+        13
+      ],
       "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true },
-        { "name": "magic_context" },
-        { "name": "magic_program" }
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
       ],
       "args": []
     },
     {
-      "name": "commit_blackjack",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 33],
+      "name": "commit_player",
+      "discriminator": [
+        240,
+        196,
+        120,
+        93,
+        216,
+        101,
+        42,
+        253
+      ],
       "accounts": [
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "pda", "writable": true },
-        { "name": "magic_context" },
-        { "name": "magic_program" }
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_session",
+      "discriminator": [
+        75,
+        2,
+        56,
+        144,
+        89,
+        208,
+        173,
+        167
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "magic_program",
+          "address": "Magic11111111111111111111111111111111111111"
+        },
+        {
+          "name": "magic_context",
+          "writable": true,
+          "address": "MagicContext1111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_table",
+      "discriminator": [
+        214,
+        142,
+        131,
+        250,
+        242,
+        83,
+        135,
+        185
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "template"
+        },
+        {
+          "name": "table",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  98,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "bet_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "create_template",
+      "discriminator": [
+        245,
+        51,
+        247,
+        234,
+        31,
+        9,
+        40,
+        227
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "Vault pays rent for the template account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  101,
+                  109,
+                  112,
+                  108,
+                  97,
+                  116,
+                  101
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "name",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "description",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "steps",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "GameAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "min_bet",
+          "type": "u64"
+        },
+        {
+          "name": "max_bet",
+          "type": "u64"
+        },
+        {
+          "name": "creator_fee_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "deactivate_template",
+      "discriminator": [
+        161,
+        89,
+        173,
+        13,
+        150,
+        247,
+        106,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "template",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_blackjack",
+      "discriminator": [
+        20,
+        9,
+        18,
+        52,
+        77,
+        213,
+        76,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "buffer_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                109,
+                147,
+                57,
+                35,
+                65,
+                89,
+                248,
+                231,
+                140,
+                227,
+                155,
+                49,
+                3,
+                37,
+                160,
+                15,
+                1,
+                246,
+                12,
+                191,
+                105,
+                216,
+                156,
+                29,
+                204,
+                1,
+                251,
+                153,
+                243,
+                146,
+                17,
+                147
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "owner_program",
+          "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_coin_toss",
+      "discriminator": [
+        238,
+        188,
+        255,
+        146,
+        168,
+        39,
+        192,
+        154
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "buffer_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                109,
+                147,
+                57,
+                35,
+                65,
+                89,
+                248,
+                231,
+                140,
+                227,
+                155,
+                49,
+                3,
+                37,
+                160,
+                15,
+                1,
+                246,
+                12,
+                191,
+                105,
+                216,
+                156,
+                29,
+                204,
+                1,
+                251,
+                153,
+                243,
+                146,
+                17,
+                147
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "owner_program",
+          "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_player",
+      "discriminator": [
+        235,
+        159,
+        245,
+        102,
+        161,
+        199,
+        254,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "buffer_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                109,
+                147,
+                57,
+                35,
+                65,
+                89,
+                248,
+                231,
+                140,
+                227,
+                155,
+                49,
+                3,
+                37,
+                160,
+                15,
+                1,
+                246,
+                12,
+                191,
+                105,
+                216,
+                156,
+                29,
+                204,
+                1,
+                251,
+                153,
+                243,
+                146,
+                17,
+                147
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "owner_program",
+          "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_session",
+      "discriminator": [
+        82,
+        83,
+        119,
+        119,
+        196,
+        219,
+        5,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "signer": true
+        },
+        {
+          "name": "buffer_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  102,
+                  102,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                109,
+                147,
+                57,
+                35,
+                65,
+                89,
+                248,
+                231,
+                140,
+                227,
+                155,
+                49,
+                3,
+                37,
+                160,
+                15,
+                1,
+                246,
+                12,
+                191,
+                105,
+                216,
+                156,
+                29,
+                204,
+                1,
+                251,
+                153,
+                243,
+                146,
+                17,
+                147
+              ]
+            }
+          }
+        },
+        {
+          "name": "delegation_record_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "delegation_metadata_pda",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  108,
+                  101,
+                  103,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110,
+                  45,
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pda"
+              }
+            ],
+            "program": {
+              "kind": "account",
+              "path": "delegation_program"
+            }
+          }
+        },
+        {
+          "name": "pda",
+          "writable": true
+        },
+        {
+          "name": "owner_program",
+          "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
+        },
+        {
+          "name": "delegation_program",
+          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "flip_coin",
+      "discriminator": [
+        225,
+        36,
+        240,
+        0,
+        12,
+        56,
+        93,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_toss",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  116,
+                  111,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "choice",
+          "type": "u8"
+        },
+        {
+          "name": "bet_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "hit",
+      "discriminator": [
+        237,
+        225,
+        125,
+        176,
+        242,
+        47,
+        187,
+        184
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_blackjack",
+      "discriminator": [
+        91,
+        195,
+        123,
+        103,
+        75,
+        246,
+        4,
+        214
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_player",
+      "discriminator": [
+        79,
+        249,
+        88,
+        177,
+        220,
+        62,
+        56,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "coin_toss",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  116,
+                  111,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_vault",
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "join_table",
+      "discriminator": [
+        14,
+        117,
+        84,
+        51,
+        95,
+        146,
+        171,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "seat1_player",
+          "docs": [
+            "Seat 1's player account (to update stats on settlement)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "template",
+          "writable": true
+        },
+        {
+          "name": "table",
+          "writable": true
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "player_choice",
+      "discriminator": [
+        136,
+        178,
+        99,
+        42,
+        254,
+        122,
+        16,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "writable": true
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "choice_bit",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "process_undelegation",
+      "discriminator": [
+        196,
+        28,
+        41,
+        206,
+        48,
+        37,
+        51,
+        167
+      ],
+      "accounts": [
+        {
+          "name": "base_account",
+          "writable": true
+        },
+        {
+          "name": "buffer"
+        },
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "account_seeds",
+          "type": {
+            "vec": "bytes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "propose_game",
+      "discriminator": [
+        236,
+        56,
+        171,
+        97,
+        67,
+        203,
+        205,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "proposer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "proposal",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  112,
+                  111,
+                  115,
+                  97,
+                  108
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "id",
+          "type": "u64"
+        },
+        {
+          "name": "co_creator",
+          "type": "pubkey"
+        },
+        {
+          "name": "name",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "description",
+          "type": {
+            "array": [
+              "u8",
+              128
+            ]
+          }
+        },
+        {
+          "name": "steps",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "GameAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "min_bet",
+          "type": "u64"
+        },
+        {
+          "name": "max_bet",
+          "type": "u64"
+        },
+        {
+          "name": "creator_fee_bps",
+          "type": "u16"
+        },
+        {
+          "name": "fee_split_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "reject_proposal",
+      "discriminator": [
+        114,
+        162,
+        164,
+        82,
+        191,
+        11,
+        102,
+        25
+      ],
+      "accounts": [
+        {
+          "name": "co_creator",
+          "signer": true
+        },
+        {
+          "name": "proposal",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setup_permissions",
+      "discriminator": [
+        165,
+        68,
+        91,
+        236,
+        213,
+        211,
+        198,
+        213
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "coin_toss",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  105,
+                  110,
+                  95,
+                  116,
+                  111,
+                  115,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "permission_coin_toss",
+          "writable": true
+        },
+        {
+          "name": "permission_blackjack",
+          "writable": true
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setup_session_permission",
+      "discriminator": [
+        131,
+        90,
+        35,
+        88,
+        67,
+        28,
+        68,
+        223
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "permission_session",
+          "writable": true
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setup_table_permission",
+      "discriminator": [
+        171,
+        59,
+        199,
+        86,
+        121,
+        220,
+        9,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "table",
+          "docs": [
+            "The table account"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  97,
+                  98,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "table.id",
+                "account": "Table"
+              }
+            ]
+          }
+        },
+        {
+          "name": "permission_table",
+          "writable": true
+        },
+        {
+          "name": "permission_program",
+          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "stand",
+      "discriminator": [
+        215,
+        119,
+        10,
+        61,
+        97,
+        252,
+        126,
+        243
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "start_game",
+      "discriminator": [
+        249,
+        47,
+        252,
+        172,
+        184,
+        162,
+        245,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "template",
+          "writable": true
+        },
+        {
+          "name": "session",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  115,
+                  115,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bet_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "start_hand",
+      "discriminator": [
+        50,
+        173,
+        164,
+        52,
+        65,
+        42,
+        197,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "player",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  108,
+                  97,
+                  121,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "blackjack",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  108,
+                  97,
+                  99,
+                  107,
+                  106,
+                  97,
+                  99,
+                  107
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "bet_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "table_action",
+      "discriminator": [
+        69,
+        246,
+        30,
+        37,
+        26,
+        9,
+        187,
+        76
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "seat1_player",
+          "writable": true
+        },
+        {
+          "name": "seat2_player",
+          "writable": true
+        },
+        {
+          "name": "template",
+          "writable": true
+        },
+        {
+          "name": "table",
+          "writable": true
+        },
+        {
+          "name": "oracle_queue",
+          "writable": true,
+          "address": "Cuj97ggrhhidhbu39TijNVqE74xvKJ69gDervRUXAxGh"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "program_identity",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  100,
+                  101,
+                  110,
+                  116,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vrf_program",
+          "address": "Vrf1RNUjXmQGjmQrQLvJHs9SNkvDJEsRVFPkfSQUwGz"
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "choice_bit",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "table_callback",
+      "discriminator": [
+        76,
+        113,
+        16,
+        85,
+        242,
+        65,
+        115,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "vrf_program_identity",
+          "signer": true,
+          "address": "9irBy75QS2BN81FUgXuHcjqceJJRuc9oDkAe8TKVvvAw"
+        },
+        {
+          "name": "seat1_player",
+          "writable": true
+        },
+        {
+          "name": "seat2_player",
+          "writable": true
+        },
+        {
+          "name": "table",
+          "writable": true
+        },
+        {
+          "name": "template",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "randomness",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "table_timeout",
+      "discriminator": [
+        194,
+        25,
+        9,
+        69,
+        195,
+        184,
+        225,
+        129
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "seat1_player",
+          "writable": true
+        },
+        {
+          "name": "seat2_player",
+          "writable": true
+        },
+        {
+          "name": "table",
+          "writable": true
+        }
       ],
       "args": []
     }
   ],
   "accounts": [
     {
-      "name": "Player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 1, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "authority", "type": "publicKey" },
-          { "name": "balance", "type": "u64" },
-          { "name": "total_deposited", "type": "u64" },
-          { "name": "total_withdrawn", "type": "u64" },
-          { "name": "total_bets", "type": "u32" },
-          { "name": "total_wins", "type": "u32" },
-          { "name": "total_losses", "type": "u32" },
-          { "name": "total_wagered", "type": "u64" },
-          { "name": "total_won", "type": "u64" },
-          { "name": "initialized", "type": "bool" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
+      "name": "BlackjackState",
+      "discriminator": [
+        68,
+        118,
+        234,
+        102,
+        129,
+        26,
+        4,
+        185
+      ]
     },
     {
       "name": "CoinToss",
-      "discriminator": [0, 0, 0, 0, 0, 0, 2, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "player", "type": "publicKey" },
-          { "name": "choice", "type": "u8" },
-          { "name": "result", "type": "u8" },
-          { "name": "bet_amount", "type": "u64" },
-          { "name": "won", "type": "bool" },
-          { "name": "status", "type": { "defined": "TossStatus" } },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
+      "discriminator": [
+        115,
+        100,
+        235,
+        94,
+        128,
+        40,
+        68,
+        221
+      ]
+    },
+    {
+      "name": "GameProposal",
+      "discriminator": [
+        232,
+        27,
+        227,
+        119,
+        204,
+        14,
+        149,
+        30
+      ]
+    },
+    {
+      "name": "GameSession",
+      "discriminator": [
+        150,
+        116,
+        20,
+        197,
+        205,
+        121,
+        220,
+        240
+      ]
+    },
+    {
+      "name": "GameTemplate",
+      "discriminator": [
+        228,
+        37,
+        106,
+        213,
+        153,
+        137,
+        188,
+        204
+      ]
+    },
+    {
+      "name": "Player",
+      "discriminator": [
+        205,
+        222,
+        112,
+        7,
+        165,
+        155,
+        206,
+        218
+      ]
+    },
+    {
+      "name": "Table",
+      "discriminator": [
+        34,
+        100,
+        138,
+        97,
+        236,
+        129,
+        230,
+        112
+      ]
     },
     {
       "name": "Vault",
-      "discriminator": [0, 0, 0, 0, 0, 0, 3, 0],
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AlreadyInitialized",
+      "msg": "Player already initialized"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidChoice",
+      "msg": "Choice must be 0 (heads) or 1 (tails)"
+    },
+    {
+      "code": 6002,
+      "name": "BetTooSmall",
+      "msg": "Bet amount below minimum"
+    },
+    {
+      "code": 6003,
+      "name": "BetTooLarge",
+      "msg": "Bet amount above maximum"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientBalance",
+      "msg": "Insufficient balance for bet"
+    },
+    {
+      "code": 6005,
+      "name": "TossAlreadyPending",
+      "msg": "Coin toss already pending"
+    },
+    {
+      "code": 6006,
+      "name": "NoPendingToss",
+      "msg": "No pending coin toss to settle"
+    },
+    {
+      "code": 6007,
+      "name": "AlreadySettled",
+      "msg": "Coin toss already settled"
+    },
+    {
+      "code": 6008,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    },
+    {
+      "code": 6009,
+      "name": "ZeroDeposit",
+      "msg": "Must deposit at least some SOL"
+    },
+    {
+      "code": 6010,
+      "name": "InsufficientChips",
+      "msg": "Insufficient chip balance to cash out"
+    },
+    {
+      "code": 6011,
+      "name": "VaultInsufficient",
+      "msg": "Vault has insufficient SOL for withdrawal"
+    },
+    {
+      "code": 6012,
+      "name": "HandInProgress",
+      "msg": "Blackjack hand already in progress"
+    },
+    {
+      "code": 6013,
+      "name": "NoActiveHand",
+      "msg": "No active hand"
+    },
+    {
+      "code": 6014,
+      "name": "NotPlayerTurn",
+      "msg": "Not player's turn"
+    },
+    {
+      "code": 6015,
+      "name": "HandFull",
+      "msg": "Hand is full (max cards reached)"
+    }
+  ],
+  "types": [
+    {
+      "name": "BlackjackResult",
       "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "bump", "type": "u8" }
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "PlayerWin"
+          },
+          {
+            "name": "DealerWin"
+          },
+          {
+            "name": "Push"
+          },
+          {
+            "name": "Blackjack"
+          },
+          {
+            "name": "PlayerBust"
+          },
+          {
+            "name": "DealerBust"
+          }
         ]
       }
     },
     {
       "name": "BlackjackState",
-      "discriminator": [0, 0, 0, 0, 0, 0, 4, 0],
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "player", "type": "publicKey" },
-          { "name": "player_cards", "type": { "vec": "u8" } },
-          { "name": "dealer_cards", "type": { "vec": "u8" } },
-          { "name": "bet_amount", "type": "u64" },
-          { "name": "status", "type": { "defined": "BlackjackStatus" } },
-          { "name": "result", "type": { "defined": "BlackjackResult" } },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    },
-    {
-      "name": "GameTemplate",
-      "discriminator": [0, 0, 0, 0, 0, 0, 5, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "id", "type": "u64" },
-          { "name": "creator", "type": "publicKey" },
-          { "name": "co_creator", "type": "publicKey" },
-          { "name": "name", "type": { "array": ["u8", 32] } },
-          { "name": "description", "type": { "array": ["u8", 128] } },
-          { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
-          { "name": "min_bet", "type": "u64" },
-          { "name": "max_bet", "type": "u64" },
-          { "name": "creator_fee_bps", "type": "u16" },
-          { "name": "total_plays", "type": "u64" },
-          { "name": "total_volume", "type": "u64" },
-          { "name": "active", "type": "bool" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    },
-    {
-      "name": "GameSession",
-      "discriminator": [0, 0, 0, 0, 0, 0, 6, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "player", "type": "publicKey" },
-          { "name": "template", "type": "publicKey" },
-          { "name": "current_step", "type": "u8" },
-          { "name": "bet_amount", "type": "u64" },
-          { "name": "effective_bet", "type": "u64" },
-          { "name": "last_choice", "type": "u8" },
-          { "name": "player_values", "type": { "vec": "u8" } },
-          { "name": "dealer_values", "type": { "vec": "u8" } },
-          { "name": "shared_values", "type": { "vec": "u8" } },
-          { "name": "counters", "type": { "array": ["u8", 4] } },
-          { "name": "status", "type": { "defined": "SessionStatus" } },
-          { "name": "result_multiplier_bps", "type": "u16" },
-          { "name": "streak", "type": "u8" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    },
-    {
-      "name": "GameProposal",
-      "discriminator": [0, 0, 0, 0, 0, 0, 7, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "id", "type": "u64" },
-          { "name": "proposer", "type": "publicKey" },
-          { "name": "co_creator", "type": "publicKey" },
-          { "name": "name", "type": { "array": ["u8", 32] } },
-          { "name": "description", "type": { "array": ["u8", 128] } },
-          { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
-          { "name": "min_bet", "type": "u64" },
-          { "name": "max_bet", "type": "u64" },
-          { "name": "creator_fee_bps", "type": "u16" },
-          { "name": "fee_split_bps", "type": "u16" },
-          { "name": "status", "type": { "defined": "ProposalStatus" } },
-          { "name": "created_at", "type": "i64" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    },
-    {
-      "name": "Table",
-      "discriminator": [0, 0, 0, 0, 0, 0, 8, 0],
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "id", "type": "u64" },
-          { "name": "template", "type": "publicKey" },
-          { "name": "seat1", "type": "publicKey" },
-          { "name": "seat2", "type": "publicKey" },
-          { "name": "seat1_values", "type": { "vec": "u8" } },
-          { "name": "seat2_values", "type": { "vec": "u8" } },
-          { "name": "shared_values", "type": { "vec": "u8" } },
-          { "name": "pot", "type": "u64" },
-          { "name": "seat1_bet", "type": "u64" },
-          { "name": "seat2_bet", "type": "u64" },
-          { "name": "current_turn", "type": "u8" },
-          { "name": "current_step", "type": "u8" },
-          { "name": "last_choice", "type": { "array": ["u8", 2] } },
-          { "name": "status", "type": { "defined": "TableStatus" } },
-          { "name": "winner", "type": "u8" },
-          { "name": "turn_deadline", "type": "i64" },
-          { "name": "bump", "type": "u8" }
-        ]
-      }
-    }
-  ],
-  "types": [
-    {
-      "name": "TossStatus",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          { "name": "Idle" },
-          { "name": "Pending" },
-          { "name": "Settled" }
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "player_cards",
+            "type": "bytes"
+          },
+          {
+            "name": "dealer_cards",
+            "type": "bytes"
+          },
+          {
+            "name": "bet_amount",
+            "type": "u64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "BlackjackStatus"
+              }
+            }
+          },
+          {
+            "name": "result",
+            "type": {
+              "defined": {
+                "name": "BlackjackResult"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
@@ -597,38 +3205,821 @@
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "Idle" },
-          { "name": "Dealing" },
-          { "name": "PlayerTurn" },
-          { "name": "DealerTurn" },
-          { "name": "Settled" }
+          {
+            "name": "Idle"
+          },
+          {
+            "name": "Dealing"
+          },
+          {
+            "name": "PlayerTurn"
+          },
+          {
+            "name": "DealerTurn"
+          },
+          {
+            "name": "Settled"
+          }
         ]
       }
     },
     {
-      "name": "BlackjackResult",
+      "name": "CoinToss",
       "type": {
-        "kind": "enum",
-        "variants": [
-          { "name": "None" },
-          { "name": "PlayerWin" },
-          { "name": "DealerWin" },
-          { "name": "Push" },
-          { "name": "Blackjack" },
-          { "name": "PlayerBust" },
-          { "name": "DealerBust" }
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "choice",
+            "type": "u8"
+          },
+          {
+            "name": "result",
+            "type": "u8"
+          },
+          {
+            "name": "bet_amount",
+            "type": "u64"
+          },
+          {
+            "name": "won",
+            "type": "bool"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "TossStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
     {
-      "name": "SessionStatus",
+      "name": "CompareRule",
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "Active" },
-          { "name": "WaitingForVrf" },
-          { "name": "WaitingForChoice" },
-          { "name": "Settled" }
+          {
+            "name": "HigherWins"
+          },
+          {
+            "name": "LowerWins"
+          },
+          {
+            "name": "ClosestTo",
+            "fields": [
+              {
+                "name": "target_value",
+                "type": "u8"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Condition",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ValueGt",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "ValueLt",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "ValueEq",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "CounterEq",
+            "fields": [
+              {
+                "name": "id",
+                "type": "u8"
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "CounterGt",
+            "fields": [
+              {
+                "name": "id",
+                "type": "u8"
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "ChoiceWas",
+            "fields": [
+              {
+                "name": "choice_bit",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "SlotMatch",
+            "fields": [
+              {
+                "name": "count",
+                "type": "u8"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameAction",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "DealCards",
+            "fields": [
+              {
+                "name": "count",
+                "type": "u8"
+              },
+              {
+                "name": "to",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "visibility",
+                "type": {
+                  "defined": {
+                    "name": "Visibility"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "RollDice",
+            "fields": [
+              {
+                "name": "sides",
+                "type": "u8"
+              },
+              {
+                "name": "count",
+                "type": "u8"
+              },
+              {
+                "name": "to",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "SpinSlots",
+            "fields": [
+              {
+                "name": "reels",
+                "type": "u8"
+              },
+              {
+                "name": "symbols",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "RandomNumber",
+            "fields": [
+              {
+                "name": "min",
+                "type": "u8"
+              },
+              {
+                "name": "max",
+                "type": "u8"
+              },
+              {
+                "name": "to",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "AwaitChoice",
+            "fields": [
+              {
+                "name": "options_mask",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "CompareHands",
+            "fields": [
+              {
+                "name": "rule",
+                "type": {
+                  "defined": {
+                    "name": "CompareRule"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "CheckThreshold",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "op",
+                "type": {
+                  "defined": {
+                    "name": "Op"
+                  }
+                }
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "CheckChoice",
+            "fields": [
+              {
+                "name": "choice_bit",
+                "type": "u8"
+              },
+              {
+                "name": "jump_if_yes",
+                "type": "u8"
+              },
+              {
+                "name": "jump_if_no",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "Jump",
+            "fields": [
+              {
+                "name": "step",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "SumValues",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "ApplyDrawRule",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              },
+              {
+                "name": "hit_below",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "RevealHidden",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "Payout",
+            "fields": [
+              {
+                "name": "multiplier_bps",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "PayoutIf",
+            "fields": [
+              {
+                "name": "condition",
+                "type": {
+                  "defined": {
+                    "name": "Condition"
+                  }
+                }
+              },
+              {
+                "name": "multiplier_bps",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "Lose"
+          },
+          {
+            "name": "Push"
+          },
+          {
+            "name": "StreakMultiplier",
+            "fields": [
+              {
+                "name": "base_bps",
+                "type": "u16"
+              },
+              {
+                "name": "per_win_bps",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "SetCounter",
+            "fields": [
+              {
+                "name": "id",
+                "type": "u8"
+              },
+              {
+                "name": "value",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "IncrementCounter",
+            "fields": [
+              {
+                "name": "id",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "ResetValues",
+            "fields": [
+              {
+                "name": "target",
+                "type": {
+                  "defined": {
+                    "name": "Target"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "DealToSeat",
+            "fields": [
+              {
+                "name": "seat",
+                "type": "u8"
+              },
+              {
+                "name": "count",
+                "type": "u8"
+              },
+              {
+                "name": "visibility",
+                "type": {
+                  "defined": {
+                    "name": "Visibility"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "AwaitTurn",
+            "fields": [
+              {
+                "name": "seat",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "CompareSeats"
+          },
+          {
+            "name": "PayoutSeat",
+            "fields": [
+              {
+                "name": "seat",
+                "type": "u8"
+              },
+              {
+                "name": "multiplier_bps",
+                "type": "u16"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameProposal",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "proposer",
+            "type": "pubkey"
+          },
+          {
+            "name": "co_creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "description",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "steps",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "GameAction"
+                }
+              }
+            }
+          },
+          {
+            "name": "min_bet",
+            "type": "u64"
+          },
+          {
+            "name": "max_bet",
+            "type": "u64"
+          },
+          {
+            "name": "creator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "fee_split_bps",
+            "type": "u16"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ProposalStatus"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameSession",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "player",
+            "type": "pubkey"
+          },
+          {
+            "name": "template",
+            "type": "pubkey"
+          },
+          {
+            "name": "current_step",
+            "type": "u8"
+          },
+          {
+            "name": "bet_amount",
+            "type": "u64"
+          },
+          {
+            "name": "effective_bet",
+            "type": "u64"
+          },
+          {
+            "name": "last_choice",
+            "type": "u8"
+          },
+          {
+            "name": "player_values",
+            "type": "bytes"
+          },
+          {
+            "name": "dealer_values",
+            "type": "bytes"
+          },
+          {
+            "name": "shared_values",
+            "type": "bytes"
+          },
+          {
+            "name": "counters",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "SessionStatus"
+              }
+            }
+          },
+          {
+            "name": "result_multiplier_bps",
+            "type": "u16"
+          },
+          {
+            "name": "streak",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GameTemplate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "co_creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "description",
+            "type": {
+              "array": [
+                "u8",
+                128
+              ]
+            }
+          },
+          {
+            "name": "steps",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "GameAction"
+                }
+              }
+            }
+          },
+          {
+            "name": "min_bet",
+            "type": "u64"
+          },
+          {
+            "name": "max_bet",
+            "type": "u64"
+          },
+          {
+            "name": "creator_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "total_plays",
+            "type": "u64"
+          },
+          {
+            "name": "total_volume",
+            "type": "u64"
+          },
+          {
+            "name": "active",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Op",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Gt"
+          },
+          {
+            "name": "Lt"
+          },
+          {
+            "name": "Eq"
+          },
+          {
+            "name": "Gte"
+          },
+          {
+            "name": "Lte"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Player",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "balance",
+            "type": "u64"
+          },
+          {
+            "name": "total_deposited",
+            "type": "u64"
+          },
+          {
+            "name": "total_withdrawn",
+            "type": "u64"
+          },
+          {
+            "name": "total_bets",
+            "type": "u32"
+          },
+          {
+            "name": "total_wins",
+            "type": "u32"
+          },
+          {
+            "name": "total_losses",
+            "type": "u32"
+          },
+          {
+            "name": "total_wagered",
+            "type": "u64"
+          },
+          {
+            "name": "total_won",
+            "type": "u64"
+          },
+          {
+            "name": "initialized",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
@@ -637,10 +4028,123 @@
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "Pending" },
-          { "name": "Accepted" },
-          { "name": "Rejected" },
-          { "name": "Countered" }
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Rejected"
+          },
+          {
+            "name": "Countered"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SessionStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "WaitingForVrf"
+          },
+          {
+            "name": "WaitingForChoice"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Table",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "id",
+            "type": "u64"
+          },
+          {
+            "name": "template",
+            "type": "pubkey"
+          },
+          {
+            "name": "seat1",
+            "type": "pubkey"
+          },
+          {
+            "name": "seat2",
+            "type": "pubkey"
+          },
+          {
+            "name": "seat1_values",
+            "type": "bytes"
+          },
+          {
+            "name": "seat2_values",
+            "type": "bytes"
+          },
+          {
+            "name": "shared_values",
+            "type": "bytes"
+          },
+          {
+            "name": "pot",
+            "type": "u64"
+          },
+          {
+            "name": "seat1_bet",
+            "type": "u64"
+          },
+          {
+            "name": "seat2_bet",
+            "type": "u64"
+          },
+          {
+            "name": "current_turn",
+            "type": "u8"
+          },
+          {
+            "name": "current_step",
+            "type": "u8"
+          },
+          {
+            "name": "last_choice",
+            "type": {
+              "array": [
+                "u8",
+                2
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "TableStatus"
+              }
+            }
+          },
+          {
+            "name": "winner",
+            "type": "u8"
+          },
+          {
+            "name": "turn_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
         ]
       }
     },
@@ -649,31 +4153,83 @@
       "type": {
         "kind": "enum",
         "variants": [
-          { "name": "WaitingSeat" },
-          { "name": "Active" },
-          { "name": "WaitingVrf" },
-          { "name": "WaitingTurn" },
-          { "name": "Settled" }
+          {
+            "name": "WaitingSeat"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "WaitingVrf"
+          },
+          {
+            "name": "WaitingTurn"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Target",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Player"
+          },
+          {
+            "name": "Dealer"
+          },
+          {
+            "name": "Shared"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TossStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Idle"
+          },
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Settled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Visibility",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Public"
+          },
+          {
+            "name": "Hidden"
+          }
         ]
       }
     }
-  ],
-  "errors": [
-    { "code": 6000, "name": "AlreadyInitialized", "msg": "Player already initialized" },
-    { "code": 6001, "name": "InvalidChoice", "msg": "Choice must be 0 (heads) or 1 (tails)" },
-    { "code": 6002, "name": "BetTooSmall", "msg": "Bet amount below minimum" },
-    { "code": 6003, "name": "BetTooLarge", "msg": "Bet amount above maximum" },
-    { "code": 6004, "name": "InsufficientBalance", "msg": "Insufficient balance for bet" },
-    { "code": 6005, "name": "TossAlreadyPending", "msg": "Coin toss already pending" },
-    { "code": 6006, "name": "NoPendingToss", "msg": "No pending coin toss to settle" },
-    { "code": 6007, "name": "AlreadySettled", "msg": "Coin toss already settled" },
-    { "code": 6008, "name": "Unauthorized", "msg": "Unauthorized" },
-    { "code": 6009, "name": "ZeroDeposit", "msg": "Must deposit at least some SOL" },
-    { "code": 6010, "name": "InsufficientChips", "msg": "Insufficient chip balance to cash out" },
-    { "code": 6011, "name": "VaultInsufficient", "msg": "Vault has insufficient SOL for withdrawal" },
-    { "code": 6012, "name": "HandInProgress", "msg": "Blackjack hand already in progress" },
-    { "code": 6013, "name": "NoActiveHand", "msg": "No active hand" },
-    { "code": 6014, "name": "NotPlayerTurn", "msg": "Not player's turn" },
-    { "code": 6015, "name": "HandFull", "msg": "Hand is full (max cards reached)" }
   ]
 }

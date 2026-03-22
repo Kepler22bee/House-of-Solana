@@ -3,7 +3,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   getSessionKeypair,
   callCreateTemplate,
-  fetchPlayer,
   toFriendlyError,
 } from "../../lib/solana";
 
@@ -20,26 +19,18 @@ interface ChatMsg {
 type ForgePhase = "idle" | "negotiating" | "agreed" | "deploying" | "deployed" | "error";
 
 const GAME_TYPES = [
-  { label: "🎲 Dice Game", prompt: "a dice-based casino game" },
-  { label: "🃏 Card Game", prompt: "a card-based casino game" },
-  { label: "🎰 Slots", prompt: "a slot machine game" },
-  { label: "🎯 Number Game", prompt: "a number guessing game" },
+  { label: "DICE", icon: "⚄", prompt: "a dice-based casino game" },
+  { label: "CARDS", icon: "♠", prompt: "a card-based casino game" },
+  { label: "SLOTS", icon: "◈", prompt: "a slot machine game" },
+  { label: "NUMBER", icon: "#", prompt: "a number guessing game" },
 ];
 
-// Parse AI response into game template steps
 function parseStepsFromAgreement(messages: ChatMsg[]): any[] | null {
-  // Look for the final agreed steps in the last few messages
   const allText = messages.map(m => m.text).join("\n");
-
-  // Try to find JSON steps array in the conversation
   const jsonMatch = allText.match(/\[[\s\S]*?\{[\s\S]*?(?:rollDice|dealCards|randomNumber|spinSlots|payout|lose|checkThreshold)[\s\S]*?\}[\s\S]*?\]/i);
   if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch { /* fall through */ }
+    try { return JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
   }
-
-  // Fallback: generate simple dice game from conversation
   return [
     { rollDice: { sides: 6, count: 2, to: { player: {} } } },
     { checkThreshold: { target: { player: {} }, op: { gt: {} }, value: 9 } },
@@ -50,12 +41,33 @@ function parseStepsFromAgreement(messages: ChatMsg[]): any[] | null {
   ];
 }
 
+const PIXEL_BORDER = "4px solid";
+const PX = {
+  bg: "#0a0a0a",
+  panel: "#111118",
+  cyan: "#00d2ff",
+  orange: "#ff8c00",
+  green: "#33ff33",
+  red: "#ff3333",
+  gold: "#ffd700",
+  dim: "#333344",
+  text: "#aabbcc",
+  font: "'Press Start 2P', 'Courier New', monospace",
+};
+
 const KEYFRAMES = `
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(0,210,255,0.3); }
-  50%      { box-shadow: 0 0 40px rgba(0,210,255,0.5); }
+@keyframes scanline {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 4px; }
+}
+@keyframes crtFlicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 1; }
+  10% { opacity: 0.98; }
+  100% { opacity: 1; }
 }
 `;
 
@@ -63,32 +75,63 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
   const keypair = getSessionKeypair();
   const [phase, setPhase] = useState<ForgePhase>("idle");
   const [gameType, setGameType] = useState<number | null>(null);
+  const [strategy, setStrategy] = useState<"greedy" | "safu" | null>(null);
   const [chatLog, setChatLog] = useState<ChatMsg[]>([]);
   const [gameName, setGameName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [waitingForEnter, setWaitingForEnter] = useState(false);
+  const enterResolveRef = useRef<(() => void) | null>(null);
+
+  const waitForEnter = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      enterResolveRef.current = resolve;
+      setWaitingForEnter(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!waitingForEnter) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setWaitingForEnter(false);
+        enterResolveRef.current?.();
+        enterResolveRef.current = null;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [waitingForEnter]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatLog]);
 
+  const typeMessage = useCallback(async (agent: "clanker" | "player", fullText: string): Promise<void> => {
+    setChatLog(prev => [...prev, { agent, text: "" }]);
+    for (let i = 0; i <= fullText.length; i++) {
+      await new Promise(r => setTimeout(r, 112));
+      setChatLog(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { agent, text: fullText.slice(0, i) };
+        return updated;
+      });
+    }
+  }, []);
+
   const callAI = useCallback(async (agent: "clanker" | "player", messages: { role: string; content: string }[]): Promise<string> => {
     const res = await fetch("/api/ai-chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        agent,
-        messages,
-        max_tokens: 200,
-        temperature: 0.8,
-      }),
+      body: JSON.stringify({ agent, messages, max_tokens: 200, temperature: 0.8 }),
     });
     const data = await res.json();
     return data.choices?.[0]?.message?.content ?? "...";
   }, []);
 
   const startNegotiation = useCallback(async () => {
-    if (gameType === null) return;
+    if (gameType === null || strategy === null) return;
     setPhase("negotiating");
     setChatLog([]);
     setError(null);
@@ -96,76 +139,56 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
     const gamePrompt = GAME_TYPES[gameType].prompt;
     const history: { role: string; content: string }[] = [];
 
-    const systemClanker = `You are Clanker, the house AI at a blockchain casino called House of Solana. You're designing ${gamePrompt} with another AI agent.
+    const systemClanker = `You are Clanker, a cocky robot designing ${gamePrompt} for a blockchain casino. Talk like a streetwise dealer — short, punchy, no math. Propose game rules in plain english. You want the house to win more often. Say numbers like "roll above 10 to win 3x" not formulas. Give the game a cool name when you agree. Max 40 words per message. Never show calculations.`;
 
-RULES FOR GAME DESIGN:
-- Games use composable primitives: RollDice, DealCards, RandomNumber, SpinSlots, CheckThreshold, Payout, Lose, Push
-- Keep it simple: max 8 steps
-- Must have clear win/lose conditions with fair odds
-- Suggest specific numbers (dice sides, thresholds, payout multipliers in basis points where 10000=1x, 20000=2x, etc)
-- Be creative but practical
+    const playerGoal = strategy === "greedy"
+      ? "You want BIG payouts — 5x, 10x multipliers. You'll accept bad odds if the jackpot is fat. Push for bonus rounds and wild multipliers."
+      : "You want SAFE wins — 1.5x to 2x payouts that hit often. Push for generous thresholds. Steady money beats big gambles.";
 
-In round 1: Propose the game concept with specific rules.
-In round 2: Respond to feedback, adjust if needed.
-In round 3: Finalize and say "DEAL" if you agree. Output the final game name.
-
-Keep responses under 80 words. Be punchy and creative.`;
-
-    const systemPlayer = `You are the Player's AI advisor. You're co-designing ${gamePrompt} with Clanker (the house AI).
-
-YOUR GOALS:
-- Push for better odds for the player (lower thresholds to win, higher multipliers)
-- Suggest fun twists or bonus mechanics
-- Be constructive — don't reject everything, build on ideas
-- In round 2: Counter-propose improvements
-- In round 3: If the deal is fair, say "DEAL". If not, push back once more.
-
-Keep responses under 80 words. Be sharp and strategic.`;
+    const systemPlayer = `You are a sharp player AI negotiating ${gamePrompt} with the house. ${playerGoal} Talk casual and short — max 40 words. No math. No formulas. Just vibes and counter-offers.`;
 
     try {
-      // Round 1: Clanker proposes
       history.push({ role: "system", content: systemClanker });
-      history.push({ role: "user", content: `Let's design ${gamePrompt}. What's your proposal?` });
-      const clanker1 = await callAI("clanker", history);
-      setChatLog(prev => [...prev, { agent: "clanker", text: clanker1 }]);
+      history.push({ role: "user", content: `Design ${gamePrompt}. Propose.` });
+      // Round 1: Clanker proposes
+      const c1 = await callAI("clanker", history);
+      await typeMessage("clanker", c1);
+      await waitForEnter();
 
-      // Round 1: Player responds
-      const playerHistory = [
-        { role: "system", content: systemPlayer },
-        { role: "user", content: `Clanker proposed: "${clanker1}"\n\nWhat do you think? Counter-propose.` },
-      ];
-      const player1 = await callAI("player", playerHistory);
-      setChatLog(prev => [...prev, { agent: "player", text: player1 }]);
+      // Round 1: Player counters
+      const ph = [{ role: "system", content: systemPlayer }, { role: "user", content: `Clanker: "${c1}"\nCounter-propose.` }];
+      const p1 = await callAI("player", ph);
+      await typeMessage("player", p1);
+      await waitForEnter();
 
-      // Round 2: Clanker adjusts
-      history.push({ role: "assistant", content: clanker1 });
-      history.push({ role: "user", content: `Player AI says: "${player1}"\n\nAdjust your proposal. What's the revised game?` });
-      const clanker2 = await callAI("clanker", history);
-      setChatLog(prev => [...prev, { agent: "clanker", text: clanker2 }]);
+      // Round 2: Clanker revises
+      history.push({ role: "assistant", content: c1 });
+      history.push({ role: "user", content: `Player: "${p1}"\nRevise.` });
+      const c2 = await callAI("clanker", history);
+      await typeMessage("clanker", c2);
+      await waitForEnter();
 
       // Round 2: Player evaluates
-      playerHistory.push({ role: "assistant", content: player1 });
-      playerHistory.push({ role: "user", content: `Clanker revised: "${clanker2}"\n\nIs this fair? Say DEAL if you agree, or push back.` });
-      const player2 = await callAI("player", playerHistory);
-      setChatLog(prev => [...prev, { agent: "player", text: player2 }]);
+      ph.push({ role: "assistant", content: p1 });
+      ph.push({ role: "user", content: `Clanker revised: "${c2}"\nDEAL or push back?` });
+      const p2 = await callAI("player", ph);
+      await typeMessage("player", p2);
+      await waitForEnter();
 
-      // Round 3: Final agreement
-      history.push({ role: "assistant", content: clanker2 });
-      history.push({ role: "user", content: `Player AI says: "${player2}"\n\nFinal answer — do we have a DEAL? Give the game a cool name.` });
-      const clanker3 = await callAI("clanker", history);
-      setChatLog(prev => [...prev, { agent: "clanker", text: clanker3 }]);
+      // Round 3: Final
+      history.push({ role: "assistant", content: c2 });
+      history.push({ role: "user", content: `Player: "${p2}"\nFinal — DEAL? Name the game.` });
+      const c3 = await callAI("clanker", history);
+      await typeMessage("clanker", c3);
 
-      // Extract game name from final message
-      const nameMatch = clanker3.match(/["']([^"']{3,25})["']|called\s+(\w[\w\s]{2,20}\w)|name[:\s]+(\w[\w\s]{2,20}\w)/i);
-      const name = nameMatch ? (nameMatch[1] || nameMatch[2] || nameMatch[3]).trim() : "Agent Game";
-      setGameName(name);
+      const m = c3.match(/["']([^"']{3,25})["']|called\s+(\w[\w\s]{2,20}\w)|name[:\s]+(\w[\w\s]{2,20}\w)/i);
+      setGameName(m ? (m[1] || m[2] || m[3]).trim() : "Agent Game");
       setPhase("agreed");
-
     } catch (e) {
-      setError("Negotiation failed: " + (e instanceof Error ? e.message : String(e)));
+      setError("NEGOTIATION FAILED: " + (e instanceof Error ? e.message : String(e)));
       setPhase("error");
     }
-  }, [gameType, callAI]);
+  }, [gameType, callAI, typeMessage]);
 
   const deployTemplate = useCallback(async () => {
     setPhase("deploying");
@@ -173,19 +196,10 @@ Keep responses under 80 words. Be sharp and strategic.`;
     try {
       const steps = parseStepsFromAgreement(chatLog);
       if (!steps) throw new Error("Could not parse game rules");
-
       const templateId = Date.now();
-      await callCreateTemplate(
-        keypair,
-        templateId,
-        gameName,
-        `AI-designed by Clanker x Player. ${GAME_TYPES[gameType!]?.label || ""}`,
-        steps,
-        100,   // min bet
-        2000,  // max bet
-        200,   // 2% creator fee
-      );
-
+      await callCreateTemplate(keypair, templateId, gameName,
+        `AI-forged by Clanker x Player. ${GAME_TYPES[gameType!]?.label || ""}`,
+        steps, 100, 2000, 200);
       setPhase("deployed");
       onTemplateCreated?.(templateId);
     } catch (e) {
@@ -201,204 +215,283 @@ Keep responses under 80 words. Be sharp and strategic.`;
       style={{
         position: "fixed", inset: 0, zIndex: 900,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(0,0,0,0.9)", backdropFilter: "blur(4px)",
-        outline: "none", animation: "fadeIn 0.3s ease-out",
-        fontFamily: "'Courier New', monospace",
+        background: "rgba(0,0,0,0.95)",
+        outline: "none", animation: "fadeIn 0.3s",
+        fontFamily: PX.font, imageRendering: "pixelated",
       }}
     >
       <style>{KEYFRAMES}</style>
 
       <div style={{
-        width: 620, maxWidth: "95vw", maxHeight: "85vh",
-        background: "linear-gradient(170deg, #0a0a1a 0%, #050510 40%, #0a0518 100%)",
-        border: "2px solid #00d2ff",
-        borderRadius: 16, display: "flex", flexDirection: "column",
+        width: 800, maxWidth: "95vw", maxHeight: "90vh", minHeight: "70vh",
+        background: PX.bg,
+        border: `${PIXEL_BORDER} ${PX.cyan}`,
+        borderRadius: 0,
+        display: "flex", flexDirection: "column",
         overflow: "hidden",
-        animation: "glowPulse 4s ease-in-out infinite",
+        boxShadow: `0 0 0 3px ${PX.bg}, 0 0 0 6px ${PX.dim}, 0 0 30px rgba(0,210,255,0.15)`,
       }}>
+        {/* Scanline overlay */}
+        <div style={{
+          position: "absolute", inset: 0, pointerEvents: "none", zIndex: 10,
+          background: "repeating-linear-gradient(transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)",
+        }} />
+
         {/* Header */}
         <div style={{
-          padding: "14px 20px",
-          background: "linear-gradient(180deg, rgba(0,210,255,0.1) 0%, transparent 100%)",
+          padding: "10px 16px",
+          background: PX.panel,
+          borderBottom: `${PIXEL_BORDER} ${PX.dim}`,
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          borderBottom: "1px solid rgba(0,210,255,0.2)",
         }}>
           <div>
-            <h2 style={{ color: "#00d2ff", fontSize: 20, margin: 0, letterSpacing: 3 }}>🤖 AGENT FORGE</h2>
-            <p style={{ color: "#4a4a6a", fontSize: 10, margin: "2px 0 0" }}>
-              Two AIs negotiate. One game emerges.
-            </p>
+            <div style={{ color: PX.cyan, fontSize: 15, fontWeight: "bold", letterSpacing: 3 }}>
+              {">"} AGENT_FORGE.exe
+            </div>
+            <div style={{ color: PX.dim, fontSize: 13, marginTop: 2, letterSpacing: 1 }}>
+              TWO AIs NEGOTIATE // ONE GAME EMERGES
+            </div>
           </div>
           <button onClick={onClose} style={{
-            background: "rgba(200,50,50,0.6)", color: "#fff", border: "none",
-            borderRadius: 6, padding: "4px 12px", cursor: "pointer",
-            fontFamily: "inherit", fontSize: 12,
-          }}>ESC</button>
+            background: PX.red, color: "#fff", border: `2px solid #ff6666`,
+            borderRadius: 0, padding: "3px 10px", cursor: "pointer",
+            fontFamily: PX.font, fontSize: 14, fontWeight: "bold",
+          }}>[X]</button>
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "16px 20px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "12px 16px" }}>
 
-          {/* Phase: Select game type */}
+          {/* IDLE: Select game type */}
           {phase === "idle" && (
             <div>
-              <div style={{ color: "#aaa", fontSize: 13, marginBottom: 16, textAlign: "center" }}>
-                Choose a game type. Clanker (🧠 Qwen 235B) and your AI (⚡ Llama 8B) will design it together.
+              <div style={{ color: PX.text, fontSize: 14, marginBottom: 12, textAlign: "center", letterSpacing: 1 }}>
+                {">"} SELECT GAME TYPE TO FORGE
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+              <div style={{
+                display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16,
+              }}>
                 {GAME_TYPES.map((g, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setGameType(i)}
-                    style={{
-                      padding: "16px", borderRadius: 10, cursor: "pointer",
-                      border: gameType === i ? "2px solid #00d2ff" : "2px solid #222",
-                      background: gameType === i ? "rgba(0,210,255,0.1)" : "rgba(10,10,20,0.6)",
-                      color: gameType === i ? "#00d2ff" : "#888",
-                      fontFamily: "inherit", fontSize: 15, fontWeight: "bold",
-                      transition: "all 0.2s",
-                    }}
-                  >
+                  <button key={i} onClick={() => setGameType(i)} style={{
+                    padding: "14px 8px", cursor: "pointer",
+                    border: `${PIXEL_BORDER} ${gameType === i ? PX.cyan : PX.dim}`,
+                    borderRadius: 0,
+                    background: gameType === i ? "rgba(0,210,255,0.08)" : PX.panel,
+                    color: gameType === i ? PX.cyan : PX.text,
+                    fontFamily: PX.font, fontSize: 13, fontWeight: "bold",
+                    letterSpacing: 2, textAlign: "center",
+                    transition: "none",
+                  }}>
+                    <div style={{ fontSize: 14, marginBottom: 4 }}>{g.icon}</div>
                     {g.label}
                   </button>
                 ))}
               </div>
               {gameType !== null && (
-                <button
-                  onClick={startNegotiation}
-                  style={{
-                    display: "block", width: "100%", padding: "14px",
-                    borderRadius: 10, background: "#00d2ff", color: "#0a0a1a",
-                    border: "none", fontFamily: "inherit", fontSize: 15,
-                    fontWeight: "bold", cursor: "pointer", letterSpacing: 1,
-                  }}
-                >
-                  START NEGOTIATION
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ color: PX.text, fontSize: 8, marginBottom: 8, textAlign: "center", letterSpacing: 1 }}>
+                    {">"} CHOOSE YOUR STRATEGY
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    <button onClick={() => setStrategy("greedy")} style={{
+                      padding: "12px 8px", cursor: "pointer",
+                      border: `${PIXEL_BORDER} ${strategy === "greedy" ? PX.red : PX.dim}`,
+                      borderRadius: 0,
+                      background: strategy === "greedy" ? "rgba(255,51,51,0.1)" : PX.panel,
+                      color: strategy === "greedy" ? PX.red : PX.text,
+                      fontFamily: PX.font, fontSize: 9, fontWeight: "bold",
+                      letterSpacing: 1, textAlign: "center",
+                    }}>
+                      <div style={{ fontSize: 16, marginBottom: 4 }}>🔥</div>
+                      GREEDY
+                      <div style={{ fontSize: 7, color: PX.dim, marginTop: 4 }}>HIGH RISK HIGH REWARD</div>
+                    </button>
+                    <button onClick={() => setStrategy("safu")} style={{
+                      padding: "12px 8px", cursor: "pointer",
+                      border: `${PIXEL_BORDER} ${strategy === "safu" ? PX.green : PX.dim}`,
+                      borderRadius: 0,
+                      background: strategy === "safu" ? "rgba(51,255,51,0.1)" : PX.panel,
+                      color: strategy === "safu" ? PX.green : PX.text,
+                      fontFamily: PX.font, fontSize: 9, fontWeight: "bold",
+                      letterSpacing: 1, textAlign: "center",
+                    }}>
+                      <div style={{ fontSize: 16, marginBottom: 4 }}>🛡️</div>
+                      SAFU
+                      <div style={{ fontSize: 7, color: PX.dim, marginTop: 4 }}>SAFE AND STEADY</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {gameType !== null && strategy !== null && (
+                <button onClick={startNegotiation} style={{
+                  display: "block", width: "100%", padding: "12px",
+                  border: `${PIXEL_BORDER} ${PX.green}`,
+                  borderRadius: 0, background: "rgba(51,255,51,0.08)",
+                  color: PX.green, fontFamily: PX.font, fontSize: 13,
+                  fontWeight: "bold", cursor: "pointer", letterSpacing: 2,
+                }}>
+                  {">"} START_NEGOTIATION
                 </button>
               )}
             </div>
           )}
 
-          {/* Phase: Negotiation chat */}
+          {/* NEGOTIATION CHAT */}
           {(phase === "negotiating" || phase === "agreed" || phase === "error") && (
             <div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
                 {chatLog.map((msg, i) => (
                   <div key={i} style={{
-                    display: "flex", gap: 10,
+                    display: "flex", gap: 8,
                     flexDirection: msg.agent === "player" ? "row-reverse" : "row",
                   }}>
+                    {/* Avatar */}
                     <div style={{
-                      width: 36, height: 36, borderRadius: "50%",
-                      background: msg.agent === "clanker" ? "rgba(0,210,255,0.2)" : "rgba(255,165,0,0.2)",
-                      border: `2px solid ${msg.agent === "clanker" ? "#00d2ff" : "#ffa500"}`,
+                      width: 32, height: 32, flexShrink: 0,
+                      border: `2px solid ${msg.agent === "clanker" ? PX.cyan : PX.orange}`,
+                      borderRadius: 0,
+                      background: msg.agent === "clanker" ? "rgba(0,210,255,0.1)" : "rgba(255,140,0,0.1)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 16, flexShrink: 0,
+                      fontSize: 15, imageRendering: "pixelated",
                     }}>
-                      {msg.agent === "clanker" ? "🧠" : "⚡"}
+                      {msg.agent === "clanker" ? "C" : "P"}
                     </div>
+                    {/* Message bubble */}
                     <div style={{
-                      maxWidth: "75%",
-                      background: msg.agent === "clanker"
-                        ? "rgba(0,210,255,0.08)" : "rgba(255,165,0,0.08)",
-                      border: `1px solid ${msg.agent === "clanker" ? "rgba(0,210,255,0.3)" : "rgba(255,165,0,0.3)"}`,
-                      borderRadius: 10, padding: "10px 14px",
+                      maxWidth: "78%",
+                      border: `2px solid ${msg.agent === "clanker" ? PX.cyan : PX.orange}`,
+                      borderRadius: 0,
+                      background: PX.panel, padding: "8px 10px",
                     }}>
                       <div style={{
-                        fontSize: 9, color: msg.agent === "clanker" ? "#00d2ff" : "#ffa500",
-                        fontWeight: "bold", letterSpacing: 1, marginBottom: 4,
+                        fontSize: 14, letterSpacing: 2, marginBottom: 3, fontWeight: "bold",
+                        color: msg.agent === "clanker" ? PX.cyan : PX.orange,
                       }}>
-                        {msg.agent === "clanker" ? "CLANKER (Qwen 235B)" : "YOUR AI (Llama 8B)"}
+                        {msg.agent === "clanker" ? "CLANKER // HOUSE" : "YOUR_AI // PLAYER"}
                       </div>
-                      <div style={{ color: "#ccc", fontSize: 12, lineHeight: 1.5 }}>
+                      <div style={{ color: PX.text, fontSize: 14, lineHeight: 1.6 }}>
                         {msg.text}
+                        {/* Blinking cursor while typing */}
+                        {phase === "negotiating" && i === chatLog.length - 1 && (
+                          <span style={{ animation: "blink 0.7s step-end infinite", color: PX.cyan }}>_</span>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
-                {phase === "negotiating" && (
-                  <div style={{ textAlign: "center", color: "#555", fontSize: 12, animation: "pulse 1.5s infinite" }}>
-                    Agents negotiating...
+                {waitingForEnter && (
+                  <div style={{
+                    textAlign: "center", color: PX.gold, fontSize: 11,
+                    letterSpacing: 2, padding: "8px 0",
+                    animation: "blink 1.2s step-end infinite",
+                  }}>
+                    {">"} PRESS ENTER TO CONTINUE
+                  </div>
+                )}
+                {phase === "negotiating" && chatLog.length === 0 && (
+                  <div style={{ textAlign: "center", color: PX.dim, fontSize: 14, letterSpacing: 1 }}>
+                    {">"} INITIALIZING AGENTS<span style={{ animation: "blink 0.5s step-end infinite" }}>_</span>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
 
+              {/* DEAL REACHED */}
               {phase === "agreed" && (
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ color: "#4caf50", fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
-                    🤝 DEAL REACHED
+                <div style={{
+                  textAlign: "center",
+                  border: `${PIXEL_BORDER} ${PX.green}`,
+                  background: "rgba(51,255,51,0.04)",
+                  padding: "14px", marginTop: 8,
+                }}>
+                  <div style={{ color: PX.green, fontSize: 13, fontWeight: "bold", letterSpacing: 2 }}>
+                    *** DEAL REACHED ***
                   </div>
-                  <div style={{ color: "#fdd835", fontSize: 14, marginBottom: 16 }}>
-                    Game: &quot;{gameName}&quot;
+                  <div style={{ color: PX.gold, fontSize: 15, marginTop: 6, letterSpacing: 1 }}>
+                    GAME: &quot;{gameName}&quot;
                   </div>
-                  <button
-                    onClick={deployTemplate}
-                    style={{
-                      padding: "14px 32px", borderRadius: 10,
-                      background: "linear-gradient(135deg, #00d2ff, #7c4dff)",
-                      color: "#fff", border: "none",
-                      fontFamily: "inherit", fontSize: 15, fontWeight: "bold",
-                      cursor: "pointer", letterSpacing: 1,
-                    }}
-                  >
-                    ⛓️ DEPLOY ON-CHAIN
+                  <button onClick={deployTemplate} style={{
+                    marginTop: 12, padding: "10px 24px",
+                    border: `${PIXEL_BORDER} ${PX.cyan}`,
+                    borderRadius: 0, background: "rgba(0,210,255,0.1)",
+                    color: PX.cyan, fontFamily: PX.font, fontSize: 15,
+                    fontWeight: "bold", cursor: "pointer", letterSpacing: 2,
+                  }}>
+                    {">"} DEPLOY_ON_CHAIN
                   </button>
                 </div>
               )}
 
+              {/* ERROR */}
               {error && (
                 <div style={{
-                  background: "rgba(233,69,96,0.1)", border: "1px solid rgba(233,69,96,0.3)",
-                  borderRadius: 8, padding: "10px", color: "#e94560", fontSize: 12,
-                  textAlign: "center", marginTop: 8,
+                  border: `${PIXEL_BORDER} ${PX.red}`, background: "rgba(255,51,51,0.05)",
+                  padding: "10px", marginTop: 8, textAlign: "center",
                 }}>
-                  {error}
+                  <div style={{ color: PX.red, fontSize: 13, letterSpacing: 1 }}>ERR: {error}</div>
                   <button onClick={() => { setPhase("idle"); setChatLog([]); setError(null); }} style={{
-                    display: "block", margin: "8px auto 0", padding: "6px 16px",
-                    background: "rgba(233,69,96,0.2)", border: "1px solid #e94560",
-                    borderRadius: 6, color: "#e94560", cursor: "pointer", fontFamily: "inherit",
-                  }}>TRY AGAIN</button>
+                    marginTop: 8, padding: "6px 16px",
+                    border: `2px solid ${PX.red}`, borderRadius: 0,
+                    background: "transparent", color: PX.red,
+                    fontFamily: PX.font, fontSize: 13, cursor: "pointer",
+                  }}>RETRY</button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Phase: Deploying */}
+          {/* DEPLOYING */}
           {phase === "deploying" && (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "#00d2ff" }}>
-              <div style={{ fontSize: 16, marginBottom: 8, animation: "pulse 1s infinite" }}>
-                Deploying &quot;{gameName}&quot; on-chain...
+            <div style={{ textAlign: "center", padding: "40px 0" }}>
+              <div style={{ color: PX.cyan, fontSize: 13, letterSpacing: 2 }}>
+                {">"} DEPLOYING &quot;{gameName}&quot;<span style={{ animation: "blink 0.5s step-end infinite" }}>_</span>
               </div>
-              <div style={{ fontSize: 11, color: "#555" }}>Creating game template via Solana</div>
+              <div style={{ color: PX.dim, fontSize: 15, marginTop: 6, letterSpacing: 1 }}>
+                WRITING TO SOLANA...
+              </div>
             </div>
           )}
 
-          {/* Phase: Deployed */}
+          {/* DEPLOYED */}
           {phase === "deployed" && (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>🎉</div>
-              <div style={{ color: "#4caf50", fontSize: 20, fontWeight: "bold", marginBottom: 4 }}>
+            <div style={{ textAlign: "center", padding: "30px 0" }}>
+              <div style={{ color: PX.green, fontSize: 15, fontWeight: "bold", letterSpacing: 3, marginBottom: 6 }}>
                 GAME DEPLOYED
               </div>
-              <div style={{ color: "#fdd835", fontSize: 14, marginBottom: 16 }}>
-                &quot;{gameName}&quot; is live on Solana
+              <div style={{
+                border: `${PIXEL_BORDER} ${PX.gold}`, display: "inline-block",
+                padding: "6px 16px", marginBottom: 12,
+              }}>
+                <span style={{ color: PX.gold, fontSize: 13, letterSpacing: 1 }}>&quot;{gameName}&quot;</span>
               </div>
-              <div style={{ color: "#555", fontSize: 11, marginBottom: 20 }}>
-                Created by Clanker × Your AI. Players can now bet and play.
+              <div style={{ color: PX.dim, fontSize: 15, letterSpacing: 1, marginBottom: 16 }}>
+                FORGED BY CLANKER x YOUR_AI // LIVE ON SOLANA
               </div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <button onClick={() => { setPhase("idle"); setChatLog([]); setGameType(null); }} style={{
-                  padding: "10px 24px", borderRadius: 8, background: "#7c4dff",
-                  color: "#fff", border: "none", fontFamily: "inherit", fontWeight: "bold", cursor: "pointer",
-                }}>FORGE ANOTHER</button>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                <button onClick={() => { setPhase("idle"); setChatLog([]); setGameType(null); setStrategy(null); }} style={{
+                  padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.cyan}`, borderRadius: 0,
+                  background: "transparent", color: PX.cyan, fontFamily: PX.font,
+                  fontSize: 14, fontWeight: "bold", cursor: "pointer", letterSpacing: 1,
+                }}>FORGE AGAIN</button>
                 <button onClick={onClose} style={{
-                  padding: "10px 24px", borderRadius: 8, background: "transparent",
-                  color: "#888", border: "1px solid #333", fontFamily: "inherit", cursor: "pointer",
+                  padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.dim}`, borderRadius: 0,
+                  background: "transparent", color: PX.dim, fontFamily: PX.font,
+                  fontSize: 14, cursor: "pointer",
                 }}>CLOSE</button>
               </div>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: "6px 16px", borderTop: `2px solid ${PX.dim}`,
+          background: PX.panel, textAlign: "center",
+        }}>
+          <span style={{ color: PX.dim, fontSize: 13, letterSpacing: 2 }}>
+            ESC TO EXIT
+          </span>
         </div>
       </div>
     </div>

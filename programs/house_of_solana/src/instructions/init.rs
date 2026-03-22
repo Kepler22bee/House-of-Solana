@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
-use ephemeral_rollups_sdk::access_control::{
-    CreateGroupCpiBuilder, CreatePermissionCpiBuilder,
-    MAGICBLOCK_PERMISSION_PROGRAM_ID,
+use ephemeral_rollups_sdk::access_control::instructions::CreatePermissionCpiBuilder;
+use ephemeral_rollups_sdk::access_control::structs::{
+    Member, MembersArgs,
+    AUTHORITY_FLAG, TX_LOGS_FLAG, TX_BALANCES_FLAG, TX_MESSAGE_FLAG,
 };
+use ephemeral_rollups_sdk::consts::PERMISSION_PROGRAM_ID;
 use crate::constants::*;
 use crate::errors::HouseError;
 use crate::state::*;
@@ -36,32 +38,52 @@ pub fn handle_initialize_player(ctx: Context<InitializePlayer>) -> Result<()> {
 
 pub fn handle_setup_permissions(ctx: Context<SetupPermissions>) -> Result<()> {
     let coin_toss_pda = ctx.accounts.coin_toss.key();
+    let blackjack_pda = ctx.accounts.blackjack.key();
     let authority_key = ctx.accounts.authority.key();
 
-    CreateGroupCpiBuilder::new(&ctx.accounts.permission_program)
-        .group(&ctx.accounts.group)
-        .payer(&ctx.accounts.authority)
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .id(authority_key)
-        .members(vec![authority_key])
-        .invoke()?;
+    // Full access flags for the player (authority + can see all tx data)
+    let all_flags = AUTHORITY_FLAG | TX_LOGS_FLAG | TX_BALANCES_FLAG | TX_MESSAGE_FLAG;
+    let player_member = Member {
+        flags: all_flags,
+        pubkey: authority_key,
+    };
+    let members_args = MembersArgs {
+        members: Some(vec![player_member.clone()]),
+    };
 
-    let bump = ctx.bumps.coin_toss;
-    let seeds: &[&[u8]] = &[
+    // Create permission for CoinToss — restricts visibility to player only
+    let ct_bump = ctx.bumps.coin_toss;
+    let ct_seeds: &[&[u8]] = &[
         COIN_TOSS_SEED,
         ctx.accounts.authority.key.as_ref(),
-        &[bump],
+        &[ct_bump],
     ];
 
     CreatePermissionCpiBuilder::new(&ctx.accounts.permission_program)
+        .permissioned_account(&ctx.accounts.coin_toss.to_account_info())
         .permission(&ctx.accounts.permission_coin_toss)
-        .delegated_account(&ctx.accounts.coin_toss.to_account_info())
-        .group(&ctx.accounts.group)
         .payer(&ctx.accounts.authority)
         .system_program(&ctx.accounts.system_program.to_account_info())
-        .invoke_signed(&[seeds])?;
+        .args(members_args.clone())
+        .invoke_signed(&[ct_seeds])?;
 
-    msg!("Permissions set up: CoinToss {} restricted to player {}", coin_toss_pda, authority_key);
+    // Create permission for BlackjackState — dealer hole card stays private in TEE
+    let bj_bump = ctx.bumps.blackjack;
+    let bj_seeds: &[&[u8]] = &[
+        BLACKJACK_SEED,
+        ctx.accounts.authority.key.as_ref(),
+        &[bj_bump],
+    ];
+
+    CreatePermissionCpiBuilder::new(&ctx.accounts.permission_program)
+        .permissioned_account(&ctx.accounts.blackjack.to_account_info())
+        .permission(&ctx.accounts.permission_blackjack)
+        .payer(&ctx.accounts.authority)
+        .system_program(&ctx.accounts.system_program.to_account_info())
+        .args(members_args)
+        .invoke_signed(&[bj_seeds])?;
+
+    msg!("Permissions set up: CoinToss {}, Blackjack {} restricted to player {}", coin_toss_pda, blackjack_pda, authority_key);
     Ok(())
 }
 
@@ -117,14 +139,16 @@ pub struct SetupPermissions<'info> {
     pub authority: Signer<'info>,
     #[account(mut, seeds = [COIN_TOSS_SEED, authority.key().as_ref()], bump)]
     pub coin_toss: Account<'info, CoinToss>,
-    /// CHECK: Group PDA
-    #[account(mut)]
-    pub group: AccountInfo<'info>,
+    #[account(mut, seeds = [BLACKJACK_SEED, authority.key().as_ref()], bump)]
+    pub blackjack: Account<'info, BlackjackState>,
     /// CHECK: Permission PDA for coin_toss
     #[account(mut)]
     pub permission_coin_toss: AccountInfo<'info>,
+    /// CHECK: Permission PDA for blackjack
+    #[account(mut)]
+    pub permission_blackjack: AccountInfo<'info>,
     /// CHECK: MagicBlock Permission Program
-    #[account(address = MAGICBLOCK_PERMISSION_PROGRAM_ID)]
+    #[account(address = PERMISSION_PROGRAM_ID)]
     pub permission_program: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
