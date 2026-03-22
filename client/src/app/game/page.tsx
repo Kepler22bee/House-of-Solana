@@ -44,8 +44,13 @@ export default function GamePage() {
       const bal = await conn.getBalance(keypair.publicKey);
       setBalance(bal / 1e9);
 
-      // Authenticate with Private ER (TEE)
-      await authenticateTee(keypair);
+      // Authenticate with Private ER (TEE) — continue even if TEE is unavailable
+      try {
+        await authenticateTee(keypair);
+        console.log("[Wallet] TEE authenticated");
+      } catch (e) {
+        console.warn("[Wallet] TEE auth unavailable, using base chain:", e);
+      }
 
       // Initialize player on-chain if not yet done
       let player = await fetchPlayer(keypair);
