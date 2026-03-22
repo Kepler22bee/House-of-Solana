@@ -61,7 +61,7 @@ export async function loadTiledCasino(): Promise<void> {
   loading = true;
 
   try {
-    const resp = await fetch("/casino.json");
+    const resp = await fetch("/casino.json?v=" + Date.now());
     mapData = await resp.json();
     if (!mapData) return;
 

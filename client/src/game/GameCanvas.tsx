@@ -12,9 +12,8 @@ import { loadTiledMap, CASINO_BUILDING } from "./tiledMap";
 import { loadTiledCasino, casinoTiledReady, CASINO_MAP_W, CASINO_MAP_H, CASINO_EXIT, isInCasinoExit, isInVipZone } from "./tiledCasino";
 import { createCompanion, updateCompanion, loadCompanionSprite, Companion } from "./companion";
 import { CoinTossGame } from "../games/coin-toss";
-import { PricePredictionGame } from "../games/price-prediction";
 import { BlackjackGame } from "../games/blackjack";
-import { FactoryGame } from "../games/factory";
+import AgentForge from "../games/factory/AgentForge";
 import { MultiplayerGame } from "../games/multiplayer";
 
 interface DialogueState {
@@ -31,7 +30,7 @@ interface TileDialogueState {
 
 interface GameScreenState {
   active: boolean;
-  type: "coin_toss" | "price_prediction" | "blackjack" | "factory" | "multiplayer" | null;
+  type: "coin_toss" | "blackjack" | "factory" | "multiplayer" | null;
 }
 
 export interface AgentMenuState {
@@ -124,14 +123,14 @@ export default function GameCanvas() {
   const gameScreenRef = useRef<GameScreenState>({ active: false, type: null });
   const introRef = useRef<IntroState>({ active: false, line: 0, dismissed: true });
   const lastTimeRef = useRef<number>(0);
-  const sceneRef = useRef<Scene>("overworld");
+  const sceneRef = useRef<Scene>("casino");
   const casinoIntroRef = useRef<IntroState>({ active: false, line: 0, dismissed: false });
   const agentMenuRef = useRef<AgentMenuState>({ active: false, tab: "agents", selectedAgent: 0, scrollOffset: 0 });
   const overworldPosRef = useRef<{ x: number; y: number }>({ x: 41 * TILE_SIZE, y: 34 * TILE_SIZE });
   const companionRef = useRef<Companion>(createCompanion(playerRef.current));
 
   // React state for game overlays (so React components render)
-  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | "factory" | "multiplayer" | null>(null);
+  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "blackjack" | "factory" | "multiplayer" | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiChatInput, setAiChatInput] = useState("");
@@ -159,9 +158,9 @@ export default function GameCanvas() {
 
   const switchToCasino = useCallback(() => {
     overworldPosRef.current = { x: playerRef.current.x, y: playerRef.current.y };
-    // Spawn at bottom of carpet runner, just above exit zone
-    playerRef.current.x = CASINO_EXIT.x * TILE_SIZE;
-    playerRef.current.y = (CASINO_EXIT.y - 2) * TILE_SIZE;
+    // Spawn right in front of the Blackjack Dealer (x=27, y=8)
+    playerRef.current.x = 27 * TILE_SIZE;
+    playerRef.current.y = 9 * TILE_SIZE;
     playerRef.current.direction = "up";
     sceneRef.current = "casino";
     companionRef.current.x = playerRef.current.x - TILE_SIZE;
@@ -221,18 +220,13 @@ export default function GameCanvas() {
           gameScreenRef.current = { active: true, type: "coin_toss" };
           setActiveGameScreen("coin_toss");
         }
-        // After Price Dealer's dialogue ends, open price prediction game
-        if (npcName === "Price Dealer" && sceneRef.current === "casino") {
-          gameScreenRef.current = { active: true, type: "price_prediction" };
-          setActiveGameScreen("price_prediction");
-        }
         // After Blackjack Dealer's dialogue ends, open blackjack game
         if (npcName === "Blackjack Dealer" && sceneRef.current === "casino") {
           gameScreenRef.current = { active: true, type: "blackjack" };
           setActiveGameScreen("blackjack");
         }
         // After Factory Host's dialogue ends, open factory game browser
-        if (npcName === "Factory Host" && sceneRef.current === "casino") {
+        if (npcName === "Agent Forge" && sceneRef.current === "casino") {
           gameScreenRef.current = { active: true, type: "factory" };
           setActiveGameScreen("factory");
         }
@@ -381,9 +375,17 @@ export default function GameCanvas() {
             gameScreenRef.current = { active: true, type: "coin_toss" };
             setActiveGameScreen("coin_toss");
           }
-          if (npcName === "Price Dealer" && sceneRef.current === "casino") {
-            gameScreenRef.current = { active: true, type: "price_prediction" };
-            setActiveGameScreen("price_prediction");
+          if (npcName === "Blackjack Dealer" && sceneRef.current === "casino") {
+            gameScreenRef.current = { active: true, type: "blackjack" };
+            setActiveGameScreen("blackjack");
+          }
+          if (npcName === "Agent Forge" && sceneRef.current === "casino") {
+            gameScreenRef.current = { active: true, type: "factory" };
+            setActiveGameScreen("factory");
+          }
+          if (npcName === "Table Master" && sceneRef.current === "casino") {
+            gameScreenRef.current = { active: true, type: "multiplayer" };
+            setActiveGameScreen("multiplayer");
           }
           return;
         }
@@ -631,7 +633,7 @@ Keep responses under 60 words.`;
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gemma3:4b",
+          agent: "clanker",
           messages: [
             { role: "system", content: systemPrompt },
             ...aiChatMessages.slice(-6).map(m => ({ role: m.role, content: m.text })),
@@ -670,14 +672,11 @@ Keep responses under 60 words.`;
       {activeGameScreen === "coin_toss" && (
         <CoinTossGame onClose={closeGameScreen} initialChoice={clankerBet?.choice ?? null} autoFlip={clankerBet?.autoFlip ?? false} />
       )}
-      {activeGameScreen === "price_prediction" && (
-        <PricePredictionGame onClose={closeGameScreen} />
-      )}
       {activeGameScreen === "blackjack" && (
         <BlackjackGame onClose={closeGameScreen} />
       )}
       {activeGameScreen === "factory" && (
-        <FactoryGame onClose={closeGameScreen} />
+        <AgentForge onClose={closeGameScreen} />
       )}
       {activeGameScreen === "multiplayer" && (
         <MultiplayerGame onClose={closeGameScreen} />

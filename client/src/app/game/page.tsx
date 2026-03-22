@@ -8,7 +8,9 @@ import {
   authenticateTee,
   getBaseConnection,
   fetchPlayer,
+  fetchBlackjackState,
   callInitializePlayer,
+  callInitializeBlackjack,
 } from "../../lib/solana";
 import { setPlayerMoney } from "../../game/GameCanvas";
 
@@ -40,7 +42,7 @@ export default function GamePage() {
       // Airdrop if needed (devnet)
       await ensureFunded(keypair);
 
-      // Authenticate with TEE ER
+      // Authenticate with Private ER (TEE)
       await authenticateTee(keypair);
 
       // Get SOL balance
@@ -57,6 +59,17 @@ export default function GamePage() {
         } catch (e) {
           console.warn("[Wallet] Player init failed (may already exist):", e);
           player = await fetchPlayer(keypair);
+        }
+      }
+
+      // Ensure blackjack PDA exists (for players created before blackjack was added)
+      const bj = await fetchBlackjackState(keypair);
+      if (!bj) {
+        try {
+          await callInitializeBlackjack(keypair);
+          console.log("[Wallet] Blackjack account created");
+        } catch (e) {
+          console.warn("[Wallet] Blackjack init failed (may already exist):", e);
         }
       }
 

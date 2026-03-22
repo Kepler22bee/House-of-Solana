@@ -125,7 +125,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gemma3:4b",
+          agent: "player",
           messages: [
             {
               role: "system",

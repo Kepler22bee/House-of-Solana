@@ -5,6 +5,7 @@ import {
   callStartHand,
   callHit,
   callStand,
+  callInitializeBlackjack,
   waitForBlackjackUpdate,
   fetchBlackjackState,
   fetchPlayer,
@@ -138,6 +139,11 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
     setLoading(true);
     setPhase("dealing");
     try {
+      // Ensure blackjack account exists before starting
+      const existing = await fetchBlackjackState(keypair);
+      if (!existing) {
+        await callInitializeBlackjack(keypair);
+      }
       await callStartHand(keypair, bet);
       const bj = await waitForBlackjackUpdate(keypair);
       setPlayerCards(bj.playerCards || []);

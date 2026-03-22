@@ -683,6 +683,31 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
   }
 }
 
+export async function callInitializeBlackjack(keypair: Keypair): Promise<string> {
+  const id = txPending("Initialize Blackjack");
+  try {
+    const program = getProgram(keypair, "base");
+    const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .initializeBlackjack()
+        .accounts({
+          authority: keypair.publicKey,
+          blackjack: blackjackPDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
 export async function callSetupPermissions(keypair: Keypair): Promise<string> {
   const id = txPending("Setup Permissions");
   try {

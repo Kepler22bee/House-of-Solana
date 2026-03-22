@@ -315,7 +315,8 @@ function drawTablePointers(ctx: CanvasRenderingContext2D) {
 
   const tables = [
     { label: "🪙 COIN TOSS", color: "#fdd835", x: 3.5, y: 7 },
-    { label: "📈 PRICE PREDICTION", color: "#00d2ff", x: 25.5, y: 7 },
+    { label: "♠ BLACKJACK", color: "#1a6b3c", x: 22.5, y: 6 },
+    { label: "🤖 AGENT FORGE", color: "#00d2ff", x: 24, y: 22 },
     { label: "👑 VIP TABLES", color: "#e91e63", x: 15, y: 9.5 },
   ];
 
