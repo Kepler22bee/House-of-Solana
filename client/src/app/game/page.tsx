@@ -40,16 +40,20 @@ export default function GamePage() {
       const pubkey = keypair.publicKey.toBase58();
       console.log("[Wallet] Session keypair:", pubkey);
 
-      // Airdrop if needed (devnet)
-      await ensureFunded(keypair);
-
-      // Authenticate with Private ER (TEE)
-      await authenticateTee(keypair);
-
-      // Get SOL balance
+      // Get SOL balance first
       const conn = getBaseConnection();
       const bal = await conn.getBalance(keypair.publicKey);
       setBalance(bal / 1e9);
+
+      // Airdrop if needed (devnet)
+      await ensureFunded(keypair);
+
+      // Re-read balance after airdrop
+      const bal2 = await conn.getBalance(keypair.publicKey);
+      setBalance(bal2 / 1e9);
+
+      // Authenticate with Private ER (TEE)
+      await authenticateTee(keypair);
 
       // Initialize player on-chain if not yet done
       let player = await fetchPlayer(keypair);
