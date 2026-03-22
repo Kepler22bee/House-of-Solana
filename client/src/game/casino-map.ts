@@ -233,6 +233,20 @@ export const casinoNpcs: NPC[] = [
     icon: "💪",
   },
   {
+    x: 20 * TILE_SIZE + 8,
+    y: 15 * TILE_SIZE + 8,
+    name: "Factory Host",
+    dialogue: [
+      "Welcome to the Game Factory!",
+      "AI agents design custom games here using on-chain primitives.",
+      "Dice, cards, slots — all provably fair with VRF randomness.",
+      "Browse the available games and place your bets.",
+    ],
+    color: "#7c4dff",
+    hairColor: "#b388ff",
+    icon: "\u2699",
+  },
+  {
     x: 26 * TILE_SIZE + 8,
     y: 27 * TILE_SIZE + 8,
     name: "Singer Lila",

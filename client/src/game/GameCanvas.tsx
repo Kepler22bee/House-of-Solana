@@ -14,6 +14,7 @@ import { createCompanion, updateCompanion, loadCompanionSprite, Companion } from
 import { CoinTossGame } from "../games/coin-toss";
 import { PricePredictionGame } from "../games/price-prediction";
 import { BlackjackGame } from "../games/blackjack";
+import { FactoryGame } from "../games/factory";
 
 interface DialogueState {
   active: boolean;
@@ -29,7 +30,7 @@ interface TileDialogueState {
 
 interface GameScreenState {
   active: boolean;
-  type: "coin_toss" | "price_prediction" | "blackjack" | null;
+  type: "coin_toss" | "price_prediction" | "blackjack" | "factory" | null;
 }
 
 export interface AgentMenuState {
@@ -129,7 +130,7 @@ export default function GameCanvas() {
   const companionRef = useRef<Companion>(createCompanion(playerRef.current));
 
   // React state for game overlays (so React components render)
-  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | null>(null);
+  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | "factory" | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiChatInput, setAiChatInput] = useState("");
@@ -228,6 +229,11 @@ export default function GameCanvas() {
         if (npcName === "Blackjack Dealer" && sceneRef.current === "casino") {
           gameScreenRef.current = { active: true, type: "blackjack" };
           setActiveGameScreen("blackjack");
+        }
+        // After Factory Host's dialogue ends, open factory game browser
+        if (npcName === "Factory Host" && sceneRef.current === "casino") {
+          gameScreenRef.current = { active: true, type: "factory" };
+          setActiveGameScreen("factory");
         }
         return;
       }
@@ -663,6 +669,9 @@ Keep responses under 60 words.`;
       )}
       {activeGameScreen === "blackjack" && (
         <BlackjackGame onClose={closeGameScreen} />
+      )}
+      {activeGameScreen === "factory" && (
+        <FactoryGame onClose={closeGameScreen} />
       )}
       {aiChatOpen && (
         <div style={{
