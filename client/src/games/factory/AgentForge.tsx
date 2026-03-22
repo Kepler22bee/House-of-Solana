@@ -108,9 +108,31 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatLog]);
 
+  const skipTypingRef = useRef(false);
+
+  // Listen for Enter during typing to skip to full text
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && phase === "negotiating" && !waitingForEnter) {
+        skipTypingRef.current = true;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [phase, waitingForEnter]);
+
   const typeMessage = useCallback(async (agent: "clanker" | "player", fullText: string): Promise<void> => {
+    skipTypingRef.current = false;
     setChatLog(prev => [...prev, { agent, text: "" }]);
     for (let i = 0; i <= fullText.length; i++) {
+      if (skipTypingRef.current) {
+        setChatLog(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { agent, text: fullText };
+          return updated;
+        });
+        break;
+      }
       await new Promise(r => setTimeout(r, 112));
       setChatLog(prev => {
         const updated = [...prev];
@@ -135,6 +157,9 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
     setPhase("negotiating");
     setChatLog([]);
     setError(null);
+
+    // Let React render the loading state before blocking on API call
+    await new Promise(r => setTimeout(r, 50));
 
     const gamePrompt = GAME_TYPES[gameType].prompt;
     const history: { role: string; content: string }[] = [];
@@ -368,7 +393,7 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
                         fontSize: 14, letterSpacing: 2, marginBottom: 3, fontWeight: "bold",
                         color: msg.agent === "clanker" ? PX.cyan : PX.orange,
                       }}>
-                        {msg.agent === "clanker" ? "CLANKER // HOUSE" : "YOUR_AI // PLAYER"}
+                        {msg.agent === "clanker" ? "CLANKER // HOUSE" : "T800 // PLAYER"}
                       </div>
                       <div style={{ color: PX.text, fontSize: 14, lineHeight: 1.6 }}>
                         {msg.text}

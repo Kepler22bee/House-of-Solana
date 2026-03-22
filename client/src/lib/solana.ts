@@ -398,10 +398,11 @@ export function getBlackjackPDA(player: PublicKey): [PublicKey, number] {
 }
 
 export function getTemplatePDA(id: bigint | number): [PublicKey, number] {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(BigInt(id), 0);
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setBigUint64(0, BigInt(id), true);
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(TEMPLATE_SEED), buf],
+    [Buffer.from(TEMPLATE_SEED), Buffer.from(new Uint8Array(buf))],
     PROGRAM_ID
   );
 }
@@ -414,19 +415,21 @@ export function getSessionPDA(player: PublicKey): [PublicKey, number] {
 }
 
 export function getProposalPDA(id: bigint | number): [PublicKey, number] {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(BigInt(id), 0);
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setBigUint64(0, BigInt(id), true);
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(PROPOSAL_SEED), buf],
+    [Buffer.from(PROPOSAL_SEED), Buffer.from(new Uint8Array(buf))],
     PROGRAM_ID
   );
 }
 
 export function getTablePDA(id: bigint | number): [PublicKey, number] {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(BigInt(id), 0);
+  const buf = new ArrayBuffer(8);
+  const view = new DataView(buf);
+  view.setBigUint64(0, BigInt(id), true);
   return PublicKey.findProgramAddressSync(
-    [Buffer.from(TABLE_SEED), buf],
+    [Buffer.from(TABLE_SEED), Buffer.from(new Uint8Array(buf))],
     PROGRAM_ID
   );
 }

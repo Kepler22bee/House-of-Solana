@@ -147,8 +147,8 @@ pub struct SetupPermissions<'info> {
     /// CHECK: Permission PDA for blackjack
     #[account(mut)]
     pub permission_blackjack: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
     /// CHECK: MagicBlock Permission Program
     #[account(address = PERMISSION_PROGRAM_ID)]
     pub permission_program: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
 }

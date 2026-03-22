@@ -172,10 +172,10 @@ pub struct SetupSessionPermission<'info> {
     /// CHECK: Permission PDA for session
     #[account(mut)]
     pub permission_session: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
     /// CHECK: MagicBlock Permission Program
     #[account(address = PERMISSION_PROGRAM_ID)]
     pub permission_program: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -188,8 +188,8 @@ pub struct SetupTablePermission<'info> {
     /// CHECK: Permission PDA for table
     #[account(mut)]
     pub permission_table: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
     /// CHECK: MagicBlock Permission Program
     #[account(address = PERMISSION_PROGRAM_ID)]
     pub permission_program: AccountInfo<'info>,
-    pub system_program: Program<'info, System>,
 }
