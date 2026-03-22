@@ -910,12 +910,11 @@ export async function callFlipCoin(
   const side = choice === 0 ? "Heads" : "Tails";
   const id = txPending(`Flip Coin (${side})`);
   try {
-    await ensureGameDelegated(keypair);
-    const program = getProgram(keypair, "er");
+    const program = getProgram(keypair, "base");
     const [playerPDA] = getPlayerPDA(keypair.publicKey);
     const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
 
-    const tx = await sendMethodTx(keypair, "er", () =>
+    const tx = await withBlockhashRetry<string>(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (program.methods as any)
         .flipCoin(choice, new BN(betAmount))
@@ -926,6 +925,7 @@ export async function callFlipCoin(
           oracleQueue: VRF_ORACLE_QUEUE,
           systemProgram: SystemProgram.programId,
         })
+        .rpc()
     );
     txConfirmed(id, tx);
     return tx;
@@ -942,7 +942,7 @@ export async function callFlipCoin(
  */
 export async function waitForCoinTossResult(
   keypair: Keypair,
-  maxWaitMs: number = 10000
+  maxWaitMs: number = 30000
 ): Promise<{ won: boolean; result: number }> {
   const start = Date.now();
   while (Date.now() - start < maxWaitMs) {
@@ -950,7 +950,7 @@ export async function waitForCoinTossResult(
     if (state && state.status?.settled !== undefined) {
       return { won: state.won, result: state.result };
     }
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 1000));
   }
   throw new Error("VRF callback timeout — coin toss not settled");
 }
