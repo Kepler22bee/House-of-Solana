@@ -123,7 +123,7 @@ export default function GameCanvas() {
   const gameScreenRef = useRef<GameScreenState>({ active: false, type: null });
   const introRef = useRef<IntroState>({ active: false, line: 0, dismissed: true });
   const lastTimeRef = useRef<number>(0);
-  const sceneRef = useRef<Scene>("casino");
+  const sceneRef = useRef<Scene>("overworld");
   const casinoIntroRef = useRef<IntroState>({ active: false, line: 0, dismissed: false });
   const agentMenuRef = useRef<AgentMenuState>({ active: false, tab: "agents", selectedAgent: 0, scrollOffset: 0 });
   const overworldPosRef = useRef<{ x: number; y: number }>({ x: 41 * TILE_SIZE, y: 34 * TILE_SIZE });
@@ -158,9 +158,9 @@ export default function GameCanvas() {
 
   const switchToCasino = useCallback(() => {
     overworldPosRef.current = { x: playerRef.current.x, y: playerRef.current.y };
-    // Spawn right in front of the Blackjack Dealer (x=27, y=8)
-    playerRef.current.x = 27 * TILE_SIZE;
-    playerRef.current.y = 9 * TILE_SIZE;
+    // Spawn at bottom of carpet runner, just above exit zone
+    playerRef.current.x = CASINO_EXIT.x * TILE_SIZE;
+    playerRef.current.y = (CASINO_EXIT.y - 2) * TILE_SIZE;
     playerRef.current.direction = "up";
     sceneRef.current = "casino";
     companionRef.current.x = playerRef.current.x - TILE_SIZE;
