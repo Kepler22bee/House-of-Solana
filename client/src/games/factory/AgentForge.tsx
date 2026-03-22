@@ -143,13 +143,24 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
   }, []);
 
   const callAI = useCallback(async (agent: "clanker" | "player", messages: { role: string; content: string }[]): Promise<string> => {
-    const res = await fetch("/api/ai-chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ agent, messages, max_tokens: 200, temperature: 0.8 }),
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? "...";
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agent, messages, max_tokens: 150, temperature: 0.9 }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content ?? "*bzzt* signal lost...";
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e instanceof Error && e.name === "AbortError") return "*timeout* ...connection dropped. retrying won't help.";
+      throw e;
+    }
   }, []);
 
   const startNegotiation = useCallback(async () => {
@@ -414,9 +425,9 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
                     {">"} PRESS ENTER TO CONTINUE
                   </div>
                 )}
-                {phase === "negotiating" && chatLog.length === 0 && (
-                  <div style={{ textAlign: "center", color: PX.dim, fontSize: 14, letterSpacing: 1 }}>
-                    {">"} INITIALIZING AGENTS<span style={{ animation: "blink 0.5s step-end infinite" }}>_</span>
+                {phase === "negotiating" && !waitingForEnter && (
+                  <div style={{ textAlign: "center", color: PX.cyan, fontSize: 9, letterSpacing: 1, padding: "8px 0", animation: "blink 1s step-end infinite" }}>
+                    {chatLog.length === 0 ? "> CONNECTING TO AGENTS..." : "> THINKING..."}
                   </div>
                 )}
                 <div ref={chatEndRef} />
