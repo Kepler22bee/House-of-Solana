@@ -50,6 +50,12 @@ const TEE_VALIDATOR = new PublicKey(
 
 const PLAYER_SEED = "player";
 const COIN_TOSS_SEED = "coin_toss";
+const BLACKJACK_SEED = "blackjack";
+const VAULT_SEED = "vault";
+const TEMPLATE_SEED = "template";
+const SESSION_SEED = "session";
+const PROPOSAL_SEED = "proposal";
+const TABLE_SEED = "table";
 
 const SESSION_KEY = "hos_session_keypair";
 const ER_DELEGATION_KEY = "hos_er_delegated";
@@ -97,11 +103,29 @@ export function toFriendlyError(error: unknown): string {
   if (msg.includes("InvalidChoice")) {
     return "Choice must be heads (0) or tails (1).";
   }
+  if (msg.includes("BetTooSmall")) {
+    return "Bet amount is below the minimum (100 chips).";
+  }
   if (msg.includes("BetTooLarge")) {
-    return "Bet amount exceeds your balance.";
+    return "Bet amount exceeds the maximum (5,000 chips).";
+  }
+  if (msg.includes("InsufficientBalance")) {
+    return "Not enough chips. Buy more chips first.";
   }
   if (msg.includes("AlreadySettled")) {
-    return "This coin toss is already settled.";
+    return "This game is already settled.";
+  }
+  if (msg.includes("HandInProgress")) {
+    return "A blackjack hand is already in progress.";
+  }
+  if (msg.includes("NoActiveHand")) {
+    return "No active hand to act on.";
+  }
+  if (msg.includes("NotPlayerTurn")) {
+    return "It's not your turn.";
+  }
+  if (msg.includes("HandFull")) {
+    return "Hand is full — maximum cards reached.";
   }
   if (isBlockhashTransientError(error)) {
     return "Network blockhash expired. Please retry.";
@@ -364,6 +388,47 @@ export function getCoinTossStatePDA(player: PublicKey): [PublicKey, number] {
   );
 }
 
+export function getBlackjackPDA(player: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(BLACKJACK_SEED), player.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+export function getTemplatePDA(id: bigint | number): [PublicKey, number] {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(BigInt(id), 0);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(TEMPLATE_SEED), buf],
+    PROGRAM_ID
+  );
+}
+
+export function getSessionPDA(player: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(SESSION_SEED), player.toBuffer()],
+    PROGRAM_ID
+  );
+}
+
+export function getProposalPDA(id: bigint | number): [PublicKey, number] {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(BigInt(id), 0);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(PROPOSAL_SEED), buf],
+    PROGRAM_ID
+  );
+}
+
+export function getTablePDA(id: bigint | number): [PublicKey, number] {
+  const buf = Buffer.alloc(8);
+  buf.writeBigUInt64LE(BigInt(id), 0);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(TABLE_SEED), buf],
+    PROGRAM_ID
+  );
+}
+
 // ===== DELEGATION (Private ER — TEE) =====
 
 function getDelegationCacheKey(player: PublicKey): string {
@@ -416,9 +481,11 @@ export async function ensureGameDelegated(keypair: Keypair): Promise<void> {
 
   const [playerPDA] = getPlayerPDA(keypair.publicKey);
   const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
+  const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
 
   await delegatePda(keypair, "delegatePlayer", playerPDA, "Player");
   await delegatePda(keypair, "delegateCoinToss", coinTossPDA, "Coin Toss");
+  await delegatePda(keypair, "delegateBlackjack", blackjackPDA, "Blackjack");
 
   if (typeof window !== "undefined") {
     localStorage.setItem(cacheKey, "1");
@@ -465,6 +532,11 @@ export async function ensureAllUndelegated(keypair: Keypair): Promise<void> {
       pda: getCoinTossStatePDA(keypair.publicKey)[0],
       method: "commitCoinToss",
       label: "Coin Toss",
+    },
+    {
+      pda: getBlackjackPDA(keypair.publicKey)[0],
+      method: "commitBlackjack",
+      label: "Blackjack",
     },
   ];
 
@@ -539,6 +611,34 @@ export async function fetchCoinTossState(keypair: Keypair): Promise<any> {
   return fetchAccountWithFallback(keypair, "coinToss", pda);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchBlackjackState(keypair: Keypair): Promise<any> {
+  const [pda] = getBlackjackPDA(keypair.publicKey);
+  return fetchAccountWithFallback(keypair, "blackjackState", pda);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchGameSession(keypair: Keypair): Promise<any> {
+  const [pda] = getSessionPDA(keypair.publicKey);
+  return fetchAccountWithFallback(keypair, "gameSession", pda);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchGameTemplate(keypair: Keypair, id: number): Promise<any> {
+  const [pda] = getTemplatePDA(id);
+  const program = getProgram(keypair, "base");
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return await (program.account as any).gameTemplate.fetch(pda);
+  } catch { return null; }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function fetchTable(keypair: Keypair, id: number): Promise<any> {
+  const [pda] = getTablePDA(id);
+  return fetchAccountWithFallback(keypair, "table", pda);
+}
+
 // ===== INSTRUCTIONS =====
 
 export async function callInitializePlayer(keypair: Keypair): Promise<string> {
@@ -547,6 +647,7 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
     const program = getProgram(keypair, "base");
     const [playerPDA] = getPlayerPDA(keypair.publicKey);
     const [coinTossPDA] = getCoinTossStatePDA(keypair.publicKey);
+    const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
     const tx = await withBlockhashRetry<string>(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (program.methods as any)
@@ -555,6 +656,7 @@ export async function callInitializePlayer(keypair: Keypair): Promise<string> {
           authority: keypair.publicKey,
           player: playerPDA,
           coinToss: coinTossPDA,
+          blackjack: blackjackPDA,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
@@ -724,6 +826,561 @@ export async function waitForCoinTossResult(
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error("VRF callback timeout — coin toss not settled");
+}
+
+// ===== BLACKJACK =====
+
+export async function callStartHand(
+  keypair: Keypair,
+  betAmount: number = 100
+): Promise<string> {
+  const id = txPending(`Blackjack Deal (${betAmount} chips)`);
+  try {
+    await ensureGameDelegated(keypair);
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .startHand(new BN(betAmount))
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          blackjack: blackjackPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callHit(keypair: Keypair): Promise<string> {
+  const id = txPending("Blackjack Hit");
+  try {
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .hit()
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          blackjack: blackjackPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callStand(keypair: Keypair): Promise<string> {
+  const id = txPending("Blackjack Stand");
+  try {
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [blackjackPDA] = getBlackjackPDA(keypair.publicKey);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .stand()
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          blackjack: blackjackPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+/**
+ * Poll blackjack state until it reaches PlayerTurn or Settled.
+ * Used after startHand (wait for deal callback) and after hit/stand (wait for VRF).
+ */
+export async function waitForBlackjackUpdate(
+  keypair: Keypair,
+  maxWaitMs: number = 15000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const state = await fetchBlackjackState(keypair);
+    if (state) {
+      const s = state.status;
+      // Return once we're in a state the UI can act on
+      if (s?.playerTurn !== undefined || s?.settled !== undefined || s?.idle !== undefined) {
+        return state;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("Blackjack VRF callback timeout");
+}
+
+// ===== GAME FACTORY =====
+
+export async function callCreateTemplate(
+  keypair: Keypair,
+  id: number,
+  name: string,
+  description: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  steps: any[],
+  minBet: number,
+  maxBet: number,
+  creatorFeeBps: number
+): Promise<string> {
+  const txId = txPending("Create Template");
+  try {
+    const program = getProgram(keypair, "base");
+    const [templatePDA] = getTemplatePDA(id);
+    const [vaultPDA] = getVaultPDA();
+
+    const nameBytes = new Uint8Array(32);
+    const nameEnc = new TextEncoder().encode(name.slice(0, 32));
+    nameBytes.set(nameEnc);
+
+    const descBytes = new Uint8Array(128);
+    const descEnc = new TextEncoder().encode(description.slice(0, 128));
+    descBytes.set(descEnc);
+
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .createTemplate(
+          new BN(id),
+          Array.from(nameBytes),
+          Array.from(descBytes),
+          steps,
+          new BN(minBet),
+          new BN(maxBet),
+          creatorFeeBps
+        )
+        .accounts({
+          creator: keypair.publicKey,
+          vault: vaultPDA,
+          template: templatePDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(txId, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(txId, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callStartFactoryGame(
+  keypair: Keypair,
+  templateId: number,
+  betAmount: number
+): Promise<string> {
+  const id = txPending(`Start Game (${betAmount} chips)`);
+  try {
+    await ensureGameDelegated(keypair);
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [templatePDA] = getTemplatePDA(templateId);
+    const [sessionPDA] = getSessionPDA(keypair.publicKey);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .startGame(new BN(betAmount))
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          template: templatePDA,
+          session: sessionPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callPlayerChoice(
+  keypair: Keypair,
+  templateId: number,
+  choiceBit: number
+): Promise<string> {
+  const id = txPending(`Choice (bit ${choiceBit})`);
+  try {
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [templatePDA] = getTemplatePDA(templateId);
+    const [sessionPDA] = getSessionPDA(keypair.publicKey);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .playerChoice(choiceBit)
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          template: templatePDA,
+          session: sessionPDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+/**
+ * Poll game session until it reaches WaitingForChoice or Settled.
+ */
+export async function waitForSessionUpdate(
+  keypair: Keypair,
+  maxWaitMs: number = 15000
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const state = await fetchGameSession(keypair);
+    if (state) {
+      const s = state.status;
+      if (s?.waitingForChoice !== undefined || s?.settled !== undefined) {
+        return state;
+      }
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("Game session VRF callback timeout");
+}
+
+// ===== NEGOTIATION =====
+
+export async function callProposeGame(
+  keypair: Keypair,
+  id: number,
+  coCreator: PublicKey,
+  name: string,
+  description: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  steps: any[],
+  minBet: number,
+  maxBet: number,
+  creatorFeeBps: number,
+  feeSplitBps: number
+): Promise<string> {
+  const txId = txPending("Propose Game");
+  try {
+    const program = getProgram(keypair, "base");
+    const [proposalPDA] = getProposalPDA(id);
+
+    const nameBytes = new Uint8Array(32);
+    nameBytes.set(new TextEncoder().encode(name.slice(0, 32)));
+    const descBytes = new Uint8Array(128);
+    descBytes.set(new TextEncoder().encode(description.slice(0, 128)));
+
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .proposeGame(
+          new BN(id), coCreator,
+          Array.from(nameBytes), Array.from(descBytes),
+          steps, new BN(minBet), new BN(maxBet),
+          creatorFeeBps, feeSplitBps
+        )
+        .accounts({
+          proposer: keypair.publicKey,
+          proposal: proposalPDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(txId, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(txId, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callAcceptProposal(
+  keypair: Keypair,
+  proposalId: number
+): Promise<string> {
+  const txId = txPending("Accept Proposal");
+  try {
+    const program = getProgram(keypair, "base");
+    const [proposalPDA] = getProposalPDA(proposalId);
+    const [templatePDA] = getTemplatePDA(proposalId);
+    const [vaultPDA] = getVaultPDA();
+
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .acceptProposal()
+        .accounts({
+          coCreator: keypair.publicKey,
+          proposal: proposalPDA,
+          vault: vaultPDA,
+          template: templatePDA,
+          systemProgram: SystemProgram.programId,
+        })
+        .rpc()
+    );
+    txConfirmed(txId, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(txId, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callRejectProposal(
+  keypair: Keypair,
+  proposalId: number
+): Promise<string> {
+  const txId = txPending("Reject Proposal");
+  try {
+    const program = getProgram(keypair, "base");
+    const [proposalPDA] = getProposalPDA(proposalId);
+
+    const tx = await withBlockhashRetry<string>(() =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .rejectProposal()
+        .accounts({
+          coCreator: keypair.publicKey,
+          proposal: proposalPDA,
+        })
+        .rpc()
+    );
+    txConfirmed(txId, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(txId, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+// ===== MULTIPLAYER TABLES =====
+
+export async function callCreateTable(
+  keypair: Keypair,
+  tableId: number,
+  templateId: number,
+  betAmount: number
+): Promise<string> {
+  const id = txPending(`Create Table (${betAmount} chips)`);
+  try {
+    await ensureGameDelegated(keypair);
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [templatePDA] = getTemplatePDA(templateId);
+    const [tablePDA] = getTablePDA(tableId);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .createTable(new BN(tableId), new BN(betAmount))
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          template: templatePDA,
+          table: tablePDA,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callJoinTable(
+  keypair: Keypair,
+  tableId: number,
+  templateId: number,
+  seat1Player: PublicKey
+): Promise<string> {
+  const id = txPending("Join Table");
+  try {
+    await ensureGameDelegated(keypair);
+    const program = getProgram(keypair, "er");
+    const [playerPDA] = getPlayerPDA(keypair.publicKey);
+    const [seat1PlayerPDA] = getPlayerPDA(seat1Player);
+    const [templatePDA] = getTemplatePDA(templateId);
+    const [tablePDA] = getTablePDA(tableId);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .joinTable()
+        .accounts({
+          authority: keypair.publicKey,
+          player: playerPDA,
+          seat1Player: seat1PlayerPDA,
+          template: templatePDA,
+          table: tablePDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callTableAction(
+  keypair: Keypair,
+  tableId: number,
+  templateId: number,
+  seat1Player: PublicKey,
+  seat2Player: PublicKey,
+  choiceBit: number
+): Promise<string> {
+  const id = txPending(`Table Action (${choiceBit})`);
+  try {
+    const program = getProgram(keypair, "er");
+    const [seat1PDA] = getPlayerPDA(seat1Player);
+    const [seat2PDA] = getPlayerPDA(seat2Player);
+    const [templatePDA] = getTemplatePDA(templateId);
+    const [tablePDA] = getTablePDA(tableId);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .tableAction(choiceBit)
+        .accounts({
+          authority: keypair.publicKey,
+          seat1Player: seat1PDA,
+          seat2Player: seat2PDA,
+          template: templatePDA,
+          table: tablePDA,
+          oracleQueue: VRF_ORACLE_QUEUE,
+          systemProgram: SystemProgram.programId,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+export async function callTableTimeout(
+  keypair: Keypair,
+  tableId: number,
+  seat1Player: PublicKey,
+  seat2Player: PublicKey
+): Promise<string> {
+  const id = txPending("Table Timeout");
+  try {
+    const program = getProgram(keypair, "er");
+    const [seat1PDA] = getPlayerPDA(seat1Player);
+    const [seat2PDA] = getPlayerPDA(seat2Player);
+    const [tablePDA] = getTablePDA(tableId);
+
+    const tx = await sendMethodTx(keypair, "er", () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (program.methods as any)
+        .tableTimeout()
+        .accounts({
+          authority: keypair.publicKey,
+          seat1Player: seat1PDA,
+          seat2Player: seat2PDA,
+          table: tablePDA,
+        })
+    );
+    txConfirmed(id, tx);
+    return tx;
+  } catch (e) {
+    const msg = normalizeProgramError(e);
+    txError(id, msg.slice(0, 80));
+    throw e;
+  }
+}
+
+// ===== CARD HELPERS (mirror contract logic) =====
+
+export function cardFromRaw(cardByte: number): { rank: string; suit: string; value: number } {
+  if (cardByte === 0) return { rank: "?", suit: "?", value: 0 };
+  const idx = ((cardByte - 1) % 52);
+  const rankIdx = (idx % 13) + 1;
+  const suitIdx = Math.floor(idx / 13);
+
+  const suits = ["hearts", "diamonds", "clubs", "spades"];
+  const rankNames = ["", "A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  const rank = rankNames[rankIdx] || "?";
+  const suit = suits[suitIdx] || "?";
+
+  let value = rankIdx;
+  if (rankIdx >= 10) value = 10;
+  if (rankIdx === 1) value = 11; // ace
+
+  return { rank, suit, value };
+}
+
+export function handValue(cards: number[]): number {
+  let total = 0;
+  let aces = 0;
+  for (const c of cards) {
+    if (c === 0) continue;
+    const info = cardFromRaw(c);
+    total += info.value;
+    if (info.rank === "A") aces++;
+  }
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces--;
+  }
+  return total;
 }
 
 export { BN, LAMPORTS_PER_SOL, PublicKey };
