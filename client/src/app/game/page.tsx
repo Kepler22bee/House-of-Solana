@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef, type CSSProperties } from "re
 import {
   getSessionKeypair,
   clearSessionKeypair,
-  ensureFunded,
   authenticateTee,
   getBaseConnection,
   fetchPlayer,
@@ -40,17 +39,10 @@ export default function GamePage() {
       const pubkey = keypair.publicKey.toBase58();
       console.log("[Wallet] Session keypair:", pubkey);
 
-      // Get SOL balance first
+      // Get SOL balance
       const conn = getBaseConnection();
       const bal = await conn.getBalance(keypair.publicKey);
       setBalance(bal / 1e9);
-
-      // Airdrop if needed (devnet)
-      await ensureFunded(keypair);
-
-      // Re-read balance after airdrop
-      const bal2 = await conn.getBalance(keypair.publicKey);
-      setBalance(bal2 / 1e9);
 
       // Authenticate with Private ER (TEE)
       await authenticateTee(keypair);
