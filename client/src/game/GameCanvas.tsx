@@ -62,7 +62,11 @@ export const SHOP_POWERS: ShopPower[] = [
   { name: "Quantum Chip", icon: "🔮", description: "Unlock advanced pattern detection", cost: 2000 },
 ];
 
-export let playerMoney = 3500;
+export let playerMoney = 0; // loaded from on-chain Player.balance
+
+export function setPlayerMoney(value: number) {
+  playerMoney = value;
+}
 
 export const MOCK_AGENTS: AgentData[] = [
   {

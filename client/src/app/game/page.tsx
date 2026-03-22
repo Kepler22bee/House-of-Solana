@@ -1,13 +1,16 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useState, useCallback, type CSSProperties } from "react";
+import { useState, useCallback, useEffect, useRef, type CSSProperties } from "react";
 import {
   getSessionKeypair,
   clearSessionKeypair,
   ensureFunded,
   authenticateTee,
   getBaseConnection,
+  fetchPlayer,
+  callInitializePlayer,
 } from "../../lib/solana";
+import { setPlayerMoney } from "../../game/GameCanvas";
 
 const GameCanvas = dynamic(() => import("../../game/GameCanvas"), {
   ssr: false,
@@ -40,10 +43,27 @@ export default function GamePage() {
       // Authenticate with TEE ER
       await authenticateTee(keypair);
 
-      // Get balance
+      // Get SOL balance
       const conn = getBaseConnection();
       const bal = await conn.getBalance(keypair.publicKey);
       setBalance(bal / 1e9);
+
+      // Initialize player on-chain if not yet done
+      let player = await fetchPlayer(keypair);
+      if (!player) {
+        try {
+          await callInitializePlayer(keypair);
+          player = await fetchPlayer(keypair);
+        } catch (e) {
+          console.warn("[Wallet] Player init failed (may already exist):", e);
+          player = await fetchPlayer(keypair);
+        }
+      }
+
+      // Sync on-chain chip balance to game state
+      if (player) {
+        setPlayerMoney(Number(player.balance));
+      }
 
       setAddress(pubkey);
       setStatus("connected");
@@ -53,6 +73,20 @@ export default function GamePage() {
       setStatus("disconnected");
     }
   }, []);
+
+  // Periodically sync on-chain chip balance
+  const balanceInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (status !== "connected") return;
+    const sync = () => {
+      const kp = getSessionKeypair();
+      fetchPlayer(kp).then((p) => {
+        if (p) setPlayerMoney(Number(p.balance));
+      }).catch(() => {});
+    };
+    balanceInterval.current = setInterval(sync, 5000);
+    return () => { if (balanceInterval.current) clearInterval(balanceInterval.current); };
+  }, [status]);
 
   const handleDisconnect = useCallback(() => {
     clearSessionKeypair();
