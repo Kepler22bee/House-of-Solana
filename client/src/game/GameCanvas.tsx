@@ -15,6 +15,7 @@ import { CoinTossGame } from "../games/coin-toss";
 import { PricePredictionGame } from "../games/price-prediction";
 import { BlackjackGame } from "../games/blackjack";
 import { FactoryGame } from "../games/factory";
+import { MultiplayerGame } from "../games/multiplayer";
 
 interface DialogueState {
   active: boolean;
@@ -30,7 +31,7 @@ interface TileDialogueState {
 
 interface GameScreenState {
   active: boolean;
-  type: "coin_toss" | "price_prediction" | "blackjack" | "factory" | null;
+  type: "coin_toss" | "price_prediction" | "blackjack" | "factory" | "multiplayer" | null;
 }
 
 export interface AgentMenuState {
@@ -130,7 +131,7 @@ export default function GameCanvas() {
   const companionRef = useRef<Companion>(createCompanion(playerRef.current));
 
   // React state for game overlays (so React components render)
-  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | "factory" | null>(null);
+  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | "factory" | "multiplayer" | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiChatInput, setAiChatInput] = useState("");
@@ -234,6 +235,11 @@ export default function GameCanvas() {
         if (npcName === "Factory Host" && sceneRef.current === "casino") {
           gameScreenRef.current = { active: true, type: "factory" };
           setActiveGameScreen("factory");
+        }
+        // After Table Master's dialogue ends, open multiplayer lobby
+        if (npcName === "Table Master" && sceneRef.current === "casino") {
+          gameScreenRef.current = { active: true, type: "multiplayer" };
+          setActiveGameScreen("multiplayer");
         }
         return;
       }
@@ -672,6 +678,9 @@ Keep responses under 60 words.`;
       )}
       {activeGameScreen === "factory" && (
         <FactoryGame onClose={closeGameScreen} />
+      )}
+      {activeGameScreen === "multiplayer" && (
+        <MultiplayerGame onClose={closeGameScreen} />
       )}
       {aiChatOpen && (
         <div style={{

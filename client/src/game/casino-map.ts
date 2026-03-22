@@ -233,6 +233,20 @@ export const casinoNpcs: NPC[] = [
     icon: "💪",
   },
   {
+    x: 8 * TILE_SIZE + 8,
+    y: 20 * TILE_SIZE + 8,
+    name: "Table Master",
+    dialogue: [
+      "Looking for a real challenge? Try PvP.",
+      "Create a table or join one. Match bets, winner takes the pot.",
+      "30 seconds per turn. Don't AFK or you forfeit.",
+      "Step up when you're ready.",
+    ],
+    color: "#ff9800",
+    hairColor: "#e65100",
+    icon: "\u2694",
+  },
+  {
     x: 20 * TILE_SIZE + 8,
     y: 15 * TILE_SIZE + 8,
     name: "Factory Host",
