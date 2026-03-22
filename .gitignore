@@ -57,3 +57,5 @@ target/
 skills/
 skills-lock.json
 .next/
+test-ledger/
+Cargo.lock
