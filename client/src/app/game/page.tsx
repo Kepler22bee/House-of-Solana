@@ -38,6 +38,7 @@ export default function GamePage() {
       const keypair = getSessionKeypair();
       const pubkey = keypair.publicKey.toBase58();
       console.log("[Wallet] Session keypair:", pubkey);
+      console.log("[Wallet] FULL ADDRESS:", pubkey);
 
       // Get SOL balance
       const conn = getBaseConnection();
@@ -177,7 +178,7 @@ export default function GamePage() {
                 letterSpacing: 1,
               }}
             >
-              {shortAddr}
+              <span onClick={() => { if (address) { navigator.clipboard.writeText(address); alert("Copied: " + address); } }} style={{ cursor: "pointer" }} title="Click to copy full address">{shortAddr}</span>
               {balance !== null && (
                 <span style={{ color: "#fdd835", marginLeft: 8 }}>
                   {balance.toFixed(3)} SOL

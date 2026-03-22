@@ -3,6 +3,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   getSessionKeypair,
   callCreateTemplate,
+  callStartFactoryGame,
+  callPlayerChoice,
+  waitForSessionUpdate,
+  fetchPlayer,
   toFriendlyError,
 } from "../../lib/solana";
 
@@ -16,7 +20,7 @@ interface ChatMsg {
   text: string;
 }
 
-type ForgePhase = "idle" | "negotiating" | "agreed" | "deploying" | "deployed" | "error";
+type ForgePhase = "idle" | "negotiating" | "agreed" | "deploying" | "deployed" | "playing" | "played" | "error";
 
 const GAME_TYPES = [
   { label: "DICE", icon: "⚄", prompt: "a dice-based casino game" },
@@ -78,6 +82,8 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
   const [strategy, setStrategy] = useState<"greedy" | "safu" | null>(null);
   const [chatLog, setChatLog] = useState<ChatMsg[]>([]);
   const [gameName, setGameName] = useState("");
+  const [deployedTemplateId, setDeployedTemplateId] = useState<number | null>(null);
+  const [playLog, setPlayLog] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [waitingForEnter, setWaitingForEnter] = useState(false);
@@ -236,6 +242,7 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
       await callCreateTemplate(keypair, templateId, gameName,
         `AI-forged by Clanker x Player. ${GAME_TYPES[gameType!]?.label || ""}`,
         steps, 100, 2000, 200);
+      setDeployedTemplateId(templateId);
       setPhase("deployed");
       onTemplateCreated?.(templateId);
     } catch (e) {
@@ -243,6 +250,70 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
       setPhase("error");
     }
   }, [chatLog, gameName, gameType, keypair, onTemplateCreated]);
+
+  const autoPlay = useCallback(async () => {
+    if (deployedTemplateId === null) return;
+    setPhase("playing");
+    setPlayLog([]);
+
+    const log = (msg: string) => setPlayLog(prev => [...prev, msg]);
+
+    try {
+      log("> T800 sits at the table...");
+      await new Promise(r => setTimeout(r, 800));
+
+      log("> Placing bet: 200 chips");
+      await callStartFactoryGame(keypair, deployedTemplateId, 200);
+
+      log("> Waiting for VRF dice roll...");
+      const session = await waitForSessionUpdate(keypair);
+
+      const statusKey = Object.keys(session.status)[0];
+      const values = session.playerValues || session.sharedValues || [];
+
+      if (values.length > 0) {
+        log(`> Results: [${values.join(", ")}]`);
+      }
+
+      if (statusKey === "waitingForChoice") {
+        // AI decides what to do
+        const choices = [0, 1, 4, 5, 6]; // hit, stand, check, higher, lower
+        const pick = choices[Math.floor(Math.random() * choices.length)];
+        const choiceNames: Record<number, string> = { 0: "HIT", 1: "STAND", 4: "CHECK", 5: "HIGHER", 6: "LOWER" };
+        log(`> T800 chooses: ${choiceNames[pick] || pick}`);
+
+        await callPlayerChoice(keypair, deployedTemplateId, pick);
+        const result = await waitForSessionUpdate(keypair);
+        const resultStatus = Object.keys(result.status)[0];
+
+        if (resultStatus === "settled") {
+          const mult = result.resultMultiplierBps || 0;
+          if (mult > 0) {
+            log(`> WIN! Payout: ${(mult / 100).toFixed(1)}x`);
+          } else {
+            log("> LOST. House takes the bet.");
+          }
+        }
+      } else if (statusKey === "settled") {
+        const mult = session.resultMultiplierBps || 0;
+        if (mult > 0) {
+          log(`> WIN! Payout: ${(mult / 100).toFixed(1)}x`);
+        } else {
+          log("> LOST. House takes the bet.");
+        }
+      }
+
+      const player = await fetchPlayer(keypair);
+      if (player) {
+        log(`> Chip balance: ${player.balance}`);
+      }
+
+      setPhase("played");
+    } catch (e) {
+      log(`> ERROR: ${toFriendlyError(e)}`);
+      setPhase("played");
+    }
+  }, [deployedTemplateId, keypair]);
 
   return (
     <div
@@ -497,25 +568,64 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
               </div>
               <div style={{
                 border: `${PIXEL_BORDER} ${PX.gold}`, display: "inline-block",
-                padding: "6px 16px", marginBottom: 12,
+                padding: "6px 16px", marginBottom: 16,
               }}>
                 <span style={{ color: PX.gold, fontSize: 13, letterSpacing: 1 }}>&quot;{gameName}&quot;</span>
               </div>
-              <div style={{ color: PX.dim, fontSize: 15, letterSpacing: 1, marginBottom: 16 }}>
-                FORGED BY CLANKER x YOUR_AI // LIVE ON SOLANA
-              </div>
               <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                <button onClick={autoPlay} style={{
+                  padding: "10px 24px", border: `${PIXEL_BORDER} ${PX.green}`, borderRadius: 0,
+                  background: "rgba(51,255,51,0.1)", color: PX.green, fontFamily: PX.font,
+                  fontSize: 11, fontWeight: "bold", cursor: "pointer", letterSpacing: 2,
+                }}>{">"} LET T800 PLAY</button>
                 <button onClick={() => { setPhase("idle"); setChatLog([]); setGameType(null); setStrategy(null); }} style={{
-                  padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.cyan}`, borderRadius: 0,
-                  background: "transparent", color: PX.cyan, fontFamily: PX.font,
-                  fontSize: 14, fontWeight: "bold", cursor: "pointer", letterSpacing: 1,
-                }}>FORGE AGAIN</button>
-                <button onClick={onClose} style={{
-                  padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.dim}`, borderRadius: 0,
+                  padding: "10px 20px", border: `${PIXEL_BORDER} ${PX.dim}`, borderRadius: 0,
                   background: "transparent", color: PX.dim, fontFamily: PX.font,
-                  fontSize: 14, cursor: "pointer",
-                }}>CLOSE</button>
+                  fontSize: 11, cursor: "pointer",
+                }}>FORGE AGAIN</button>
               </div>
+            </div>
+          )}
+
+          {/* PLAYING */}
+          {(phase === "playing" || phase === "played") && (
+            <div style={{ padding: "16px 0" }}>
+              <div style={{ color: PX.cyan, fontSize: 11, fontWeight: "bold", letterSpacing: 2, marginBottom: 12, textAlign: "center" }}>
+                T800 PLAYING &quot;{gameName}&quot;
+              </div>
+              <div style={{
+                border: `${PIXEL_BORDER} ${PX.dim}`,
+                background: PX.panel, padding: "12px",
+                minHeight: 120,
+              }}>
+                {playLog.map((line, i) => (
+                  <div key={i} style={{ color: line.includes("WIN") ? PX.green : line.includes("LOST") || line.includes("ERROR") ? PX.red : PX.text, fontSize: 10, lineHeight: 2, letterSpacing: 1 }}>
+                    {line}
+                  </div>
+                ))}
+                {phase === "playing" && (
+                  <span style={{ color: PX.cyan, animation: "blink 0.7s step-end infinite" }}>_</span>
+                )}
+              </div>
+              {phase === "played" && (
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+                  <button onClick={autoPlay} style={{
+                    padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.green}`, borderRadius: 0,
+                    background: "transparent", color: PX.green, fontFamily: PX.font,
+                    fontSize: 10, fontWeight: "bold", cursor: "pointer",
+                  }}>PLAY AGAIN</button>
+                  <button onClick={() => { setPhase("idle"); setChatLog([]); setGameType(null); setStrategy(null); setPlayLog([]); }} style={{
+                    padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.cyan}`, borderRadius: 0,
+                    background: "transparent", color: PX.cyan, fontFamily: PX.font,
+                    fontSize: 10, cursor: "pointer",
+                  }}>FORGE NEW</button>
+                  <button onClick={onClose} style={{
+                    padding: "8px 20px", border: `${PIXEL_BORDER} ${PX.dim}`, borderRadius: 0,
+                    background: "transparent", color: PX.dim, fontFamily: PX.font,
+                    fontSize: 10, cursor: "pointer",
+                  }}>CLOSE</button>
+                </div>
+              )}
             </div>
           )}
         </div>
