@@ -1,0 +1,9 @@
+NEXT_PUBLIC_RPC_URL=https://api.cartridge.gg/x/starknet/sepolia                                                                                                          
+  NEXT_PUBLIC_WORLD_ADDRESS=0x1179e38f798235aed6c15f2b65c132f6065d9e9379c520cb21017352e6ec807
+  NEXT_PUBLIC_COIN_TOSS_ADDRESS=0x36ad75d22f2db24c01d1c648d671f9f0547e8a7571315d6811fed9cd97ee8e9
+  NEXT_PUBLIC_CASINO_ADDRESS=0x6689d62de1e6c62b602d79cb17f173752516f1a59f64080c72e1cfb65345c40
+  NEXT_PUBLIC_EVENT_RELAYER_ADDRESS=0x4598def0136ad0525c6c571ecfa092967735c51f920aaf3e8a380ec7d176e77
+  NEXT_PUBLIC_VRF_PROVIDER_ADDRESS=0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f                                                                      
+  NEXT_PUBLIC_FEE_TOKEN_ADDRESS=0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d
+  AI_CHAT_URL=https://jabbingly-nondeclarative-graig.ngrok-free.dev/v1/chat/completions                                                                                      
+  AI_CHAT_KEY=ieAVhzun-v2rkGvi3IkNNRvbMoEJj862upk8Rb2LJAo
