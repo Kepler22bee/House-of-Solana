@@ -201,19 +201,29 @@ export async function authenticateTee(keypair: Keypair): Promise<string> {
     return _teeErUrl;
   }
 
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+    ]);
+
   console.log("[TEE] Verifying TEE RPC integrity...");
-  const isVerified = await verifyTeeRpcIntegrity(TEE_ER_BASE_URL);
+  const isVerified = await withTimeout(verifyTeeRpcIntegrity(TEE_ER_BASE_URL), 10000, "TEE verify");
   if (!isVerified) {
     throw new Error("TEE RPC integrity verification failed");
   }
   console.log("[TEE] RPC integrity verified");
 
   console.log("[TEE] Acquiring auth token...");
-  const authResult = await getAuthToken(
-    TEE_ER_BASE_URL,
-    keypair.publicKey,
-    (message: Uint8Array) =>
-      Promise.resolve(nacl.sign.detached(message, keypair.secretKey))
+  const authResult = await withTimeout(
+    getAuthToken(
+      TEE_ER_BASE_URL,
+      keypair.publicKey,
+      (message: Uint8Array) =>
+        Promise.resolve(nacl.sign.detached(message, keypair.secretKey))
+    ),
+    10000,
+    "TEE auth"
   );
 
   // getAuthToken may return { token, expiresAt } or a string depending on SDK version
