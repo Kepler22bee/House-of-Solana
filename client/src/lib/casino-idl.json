@@ -9,19 +9,79 @@
   },
   "instructions": [
     {
-      "name": "initialize_player",
+      "name": "initialize_vault",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 1],
       "accounts": [
         { "name": "authority", "writable": true, "signer": true },
-        { "name": "player", "writable": true },
-        { "name": "coin_toss", "writable": true },
+        { "name": "vault", "writable": true },
         { "name": "system_program" }
       ],
       "args": []
     },
     {
-      "name": "flip_coin",
+      "name": "initialize_player",
       "discriminator": [0, 0, 0, 0, 0, 0, 0, 2],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "coin_toss", "writable": true },
+        { "name": "blackjack", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_blackjack",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 3],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "blackjack", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "setup_permissions",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 4],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "coin_toss", "writable": true },
+        { "name": "group", "writable": true },
+        { "name": "permission_coin_toss", "writable": true },
+        { "name": "permission_program" },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "buy_chips",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 5],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "vault", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "lamports", "type": "u64" }
+      ]
+    },
+    {
+      "name": "cash_out",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 6],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "vault", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "chips", "type": "u64" }
+      ]
+    },
+    {
+      "name": "flip_coin",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 7],
       "accounts": [
         { "name": "authority", "writable": true, "signer": true },
         { "name": "player", "writable": true },
@@ -36,7 +96,7 @@
     },
     {
       "name": "callback_flip_coin",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 3],
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 8],
       "accounts": [
         { "name": "vrf_program_identity", "signer": true },
         { "name": "player", "writable": true },
@@ -47,8 +107,264 @@
       ]
     },
     {
+      "name": "start_hand",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 9],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "bet_amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "callback_deal",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 10],
+      "accounts": [
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true }
+      ],
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "hit",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 11],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "callback_hit",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 12],
+      "accounts": [
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true }
+      ],
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "stand",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 13],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "callback_stand",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 14],
+      "accounts": [
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "blackjack", "writable": true }
+      ],
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "create_template",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 15],
+      "accounts": [
+        { "name": "creator", "writable": true, "signer": true },
+        { "name": "vault", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "id", "type": "u64" },
+        { "name": "name", "type": { "array": ["u8", 32] } },
+        { "name": "description", "type": { "array": ["u8", 128] } },
+        { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
+        { "name": "min_bet", "type": "u64" },
+        { "name": "max_bet", "type": "u64" },
+        { "name": "creator_fee_bps", "type": "u16" }
+      ]
+    },
+    {
+      "name": "deactivate_template",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 16],
+      "accounts": [
+        { "name": "creator", "signer": true },
+        { "name": "template", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "start_game",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 17],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "session", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "bet_amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "callback_game",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 18],
+      "accounts": [
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "session", "writable": true },
+        { "name": "template", "writable": true }
+      ],
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "player_choice",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 19],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "session", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "choice_bit", "type": "u8" }
+      ]
+    },
+    {
+      "name": "propose_game",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 20],
+      "accounts": [
+        { "name": "proposer", "writable": true, "signer": true },
+        { "name": "proposal", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "id", "type": "u64" },
+        { "name": "co_creator", "type": "publicKey" },
+        { "name": "name", "type": { "array": ["u8", 32] } },
+        { "name": "description", "type": { "array": ["u8", 128] } },
+        { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
+        { "name": "min_bet", "type": "u64" },
+        { "name": "max_bet", "type": "u64" },
+        { "name": "creator_fee_bps", "type": "u16" },
+        { "name": "fee_split_bps", "type": "u16" }
+      ]
+    },
+    {
+      "name": "accept_proposal",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 21],
+      "accounts": [
+        { "name": "co_creator", "writable": true, "signer": true },
+        { "name": "proposal", "writable": true },
+        { "name": "vault", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "reject_proposal",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 22],
+      "accounts": [
+        { "name": "co_creator", "signer": true },
+        { "name": "proposal", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_table",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 23],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "template" },
+        { "name": "table", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "id", "type": "u64" },
+        { "name": "bet_amount", "type": "u64" }
+      ]
+    },
+    {
+      "name": "join_table",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 24],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "player", "writable": true },
+        { "name": "seat1_player", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "table", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "table_callback",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 25],
+      "accounts": [
+        { "name": "vrf_program_identity", "signer": true },
+        { "name": "seat1_player", "writable": true },
+        { "name": "seat2_player", "writable": true },
+        { "name": "table", "writable": true },
+        { "name": "template", "writable": true }
+      ],
+      "args": [
+        { "name": "randomness", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "table_action",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 26],
+      "accounts": [
+        { "name": "authority", "writable": true, "signer": true },
+        { "name": "seat1_player", "writable": true },
+        { "name": "seat2_player", "writable": true },
+        { "name": "template", "writable": true },
+        { "name": "table", "writable": true },
+        { "name": "oracle_queue", "writable": true },
+        { "name": "system_program" }
+      ],
+      "args": [
+        { "name": "choice_bit", "type": "u8" }
+      ]
+    },
+    {
+      "name": "table_timeout",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 27],
+      "accounts": [
+        { "name": "authority", "signer": true },
+        { "name": "seat1_player", "writable": true },
+        { "name": "seat2_player", "writable": true },
+        { "name": "table", "writable": true }
+      ],
+      "args": []
+    },
+    {
       "name": "delegate_player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 4],
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 28],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
         { "name": "pda", "writable": true }
@@ -57,7 +373,16 @@
     },
     {
       "name": "delegate_coin_toss",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 5],
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 29],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true }
+      ],
+      "args": []
+    },
+    {
+      "name": "delegate_blackjack",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 30],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
         { "name": "pda", "writable": true }
@@ -66,7 +391,7 @@
     },
     {
       "name": "commit_player",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 6],
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 31],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
         { "name": "pda", "writable": true },
@@ -77,7 +402,18 @@
     },
     {
       "name": "commit_coin_toss",
-      "discriminator": [0, 0, 0, 0, 0, 0, 0, 7],
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 32],
+      "accounts": [
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "pda", "writable": true },
+        { "name": "magic_context" },
+        { "name": "magic_program" }
+      ],
+      "args": []
+    },
+    {
+      "name": "commit_blackjack",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 33],
       "accounts": [
         { "name": "payer", "writable": true, "signer": true },
         { "name": "pda", "writable": true },
@@ -96,6 +432,8 @@
         "fields": [
           { "name": "authority", "type": "publicKey" },
           { "name": "balance", "type": "u64" },
+          { "name": "total_deposited", "type": "u64" },
+          { "name": "total_withdrawn", "type": "u64" },
           { "name": "total_bets", "type": "u32" },
           { "name": "total_wins", "type": "u32" },
           { "name": "total_losses", "type": "u32" },
@@ -121,6 +459,125 @@
           { "name": "bump", "type": "u8" }
         ]
       }
+    },
+    {
+      "name": "Vault",
+      "discriminator": [0, 0, 0, 0, 0, 0, 3, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "BlackjackState",
+      "discriminator": [0, 0, 0, 0, 0, 0, 4, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "player", "type": "publicKey" },
+          { "name": "player_cards", "type": { "vec": "u8" } },
+          { "name": "dealer_cards", "type": { "vec": "u8" } },
+          { "name": "bet_amount", "type": "u64" },
+          { "name": "status", "type": { "defined": "BlackjackStatus" } },
+          { "name": "result", "type": { "defined": "BlackjackResult" } },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "GameTemplate",
+      "discriminator": [0, 0, 0, 0, 0, 0, 5, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "id", "type": "u64" },
+          { "name": "creator", "type": "publicKey" },
+          { "name": "co_creator", "type": "publicKey" },
+          { "name": "name", "type": { "array": ["u8", 32] } },
+          { "name": "description", "type": { "array": ["u8", 128] } },
+          { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
+          { "name": "min_bet", "type": "u64" },
+          { "name": "max_bet", "type": "u64" },
+          { "name": "creator_fee_bps", "type": "u16" },
+          { "name": "total_plays", "type": "u64" },
+          { "name": "total_volume", "type": "u64" },
+          { "name": "active", "type": "bool" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "GameSession",
+      "discriminator": [0, 0, 0, 0, 0, 0, 6, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "player", "type": "publicKey" },
+          { "name": "template", "type": "publicKey" },
+          { "name": "current_step", "type": "u8" },
+          { "name": "bet_amount", "type": "u64" },
+          { "name": "effective_bet", "type": "u64" },
+          { "name": "last_choice", "type": "u8" },
+          { "name": "player_values", "type": { "vec": "u8" } },
+          { "name": "dealer_values", "type": { "vec": "u8" } },
+          { "name": "shared_values", "type": { "vec": "u8" } },
+          { "name": "counters", "type": { "array": ["u8", 4] } },
+          { "name": "status", "type": { "defined": "SessionStatus" } },
+          { "name": "result_multiplier_bps", "type": "u16" },
+          { "name": "streak", "type": "u8" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "GameProposal",
+      "discriminator": [0, 0, 0, 0, 0, 0, 7, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "id", "type": "u64" },
+          { "name": "proposer", "type": "publicKey" },
+          { "name": "co_creator", "type": "publicKey" },
+          { "name": "name", "type": { "array": ["u8", 32] } },
+          { "name": "description", "type": { "array": ["u8", 128] } },
+          { "name": "steps", "type": { "vec": { "defined": "GameAction" } } },
+          { "name": "min_bet", "type": "u64" },
+          { "name": "max_bet", "type": "u64" },
+          { "name": "creator_fee_bps", "type": "u16" },
+          { "name": "fee_split_bps", "type": "u16" },
+          { "name": "status", "type": { "defined": "ProposalStatus" } },
+          { "name": "created_at", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
+    },
+    {
+      "name": "Table",
+      "discriminator": [0, 0, 0, 0, 0, 0, 8, 0],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "id", "type": "u64" },
+          { "name": "template", "type": "publicKey" },
+          { "name": "seat1", "type": "publicKey" },
+          { "name": "seat2", "type": "publicKey" },
+          { "name": "seat1_values", "type": { "vec": "u8" } },
+          { "name": "seat2_values", "type": { "vec": "u8" } },
+          { "name": "shared_values", "type": { "vec": "u8" } },
+          { "name": "pot", "type": "u64" },
+          { "name": "seat1_bet", "type": "u64" },
+          { "name": "seat2_bet", "type": "u64" },
+          { "name": "current_turn", "type": "u8" },
+          { "name": "current_step", "type": "u8" },
+          { "name": "last_choice", "type": { "array": ["u8", 2] } },
+          { "name": "status", "type": { "defined": "TableStatus" } },
+          { "name": "winner", "type": "u8" },
+          { "name": "turn_deadline", "type": "i64" },
+          { "name": "bump", "type": "u8" }
+        ]
+      }
     }
   ],
   "types": [
@@ -131,6 +588,71 @@
         "variants": [
           { "name": "Idle" },
           { "name": "Pending" },
+          { "name": "Settled" }
+        ]
+      }
+    },
+    {
+      "name": "BlackjackStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Idle" },
+          { "name": "Dealing" },
+          { "name": "PlayerTurn" },
+          { "name": "DealerTurn" },
+          { "name": "Settled" }
+        ]
+      }
+    },
+    {
+      "name": "BlackjackResult",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "None" },
+          { "name": "PlayerWin" },
+          { "name": "DealerWin" },
+          { "name": "Push" },
+          { "name": "Blackjack" },
+          { "name": "PlayerBust" },
+          { "name": "DealerBust" }
+        ]
+      }
+    },
+    {
+      "name": "SessionStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Active" },
+          { "name": "WaitingForVrf" },
+          { "name": "WaitingForChoice" },
+          { "name": "Settled" }
+        ]
+      }
+    },
+    {
+      "name": "ProposalStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Pending" },
+          { "name": "Accepted" },
+          { "name": "Rejected" },
+          { "name": "Countered" }
+        ]
+      }
+    },
+    {
+      "name": "TableStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "WaitingSeat" },
+          { "name": "Active" },
+          { "name": "WaitingVrf" },
+          { "name": "WaitingTurn" },
           { "name": "Settled" }
         ]
       }
@@ -145,6 +667,13 @@
     { "code": 6005, "name": "TossAlreadyPending", "msg": "Coin toss already pending" },
     { "code": 6006, "name": "NoPendingToss", "msg": "No pending coin toss to settle" },
     { "code": 6007, "name": "AlreadySettled", "msg": "Coin toss already settled" },
-    { "code": 6008, "name": "Unauthorized", "msg": "Unauthorized" }
+    { "code": 6008, "name": "Unauthorized", "msg": "Unauthorized" },
+    { "code": 6009, "name": "ZeroDeposit", "msg": "Must deposit at least some SOL" },
+    { "code": 6010, "name": "InsufficientChips", "msg": "Insufficient chip balance to cash out" },
+    { "code": 6011, "name": "VaultInsufficient", "msg": "Vault has insufficient SOL for withdrawal" },
+    { "code": 6012, "name": "HandInProgress", "msg": "Blackjack hand already in progress" },
+    { "code": 6013, "name": "NoActiveHand", "msg": "No active hand" },
+    { "code": 6014, "name": "NotPlayerTurn", "msg": "Not player's turn" },
+    { "code": 6015, "name": "HandFull", "msg": "Hand is full (max cards reached)" }
   ]
 }
