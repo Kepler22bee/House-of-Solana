@@ -268,34 +268,49 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
       log("> Waiting for VRF dice roll...");
       const session = await waitForSessionUpdate(keypair);
 
-      const statusKey = Object.keys(session.status)[0];
       const values = session.playerValues || session.sharedValues || [];
-
       if (values.length > 0) {
         log(`> Results: [${values.join(", ")}]`);
       }
 
-      if (statusKey === "waitingForChoice") {
-        // AI decides what to do
-        const choices = [0, 1, 4, 5, 6]; // hit, stand, check, higher, lower
-        const pick = choices[Math.floor(Math.random() * choices.length)];
-        const choiceNames: Record<number, string> = { 0: "HIT", 1: "STAND", 4: "CHECK", 5: "HIGHER", 6: "LOWER" };
-        log(`> T800 chooses: ${choiceNames[pick] || pick}`);
+      // Play loop — keep making choices until settled
+      let currentSession = session;
+      let statusKey = Object.keys(currentSession.status)[0];
+      const choiceNames: Record<number, string> = { 0: "HIT", 1: "STAND", 2: "FOLD", 3: "RAISE", 4: "CHECK", 5: "HIGHER", 6: "LOWER", 7: "RED", 8: "BLACK", 9: "ODD", 10: "EVEN" };
 
-        await callPlayerChoice(keypair, deployedTemplateId, pick);
-        const result = await waitForSessionUpdate(keypair);
-        const resultStatus = Object.keys(result.status)[0];
+      while (statusKey === "waitingForChoice") {
+        const pVals = currentSession.playerValues || [];
+        const dVals = currentSession.dealerValues || [];
+        const sVals = currentSession.sharedValues || [];
 
-        if (resultStatus === "settled") {
-          const mult = result.resultMultiplierBps || 0;
-          if (mult > 0) {
-            log(`> WIN! Payout: ${(mult / 100).toFixed(1)}x`);
-          } else {
-            log("> LOST. House takes the bet.");
-          }
+        // Ask T800 AI what to do
+        log("> T800 is thinking...");
+        const gameContext = `Game: "${gameName}". Your values: [${pVals.join(",")}]. Dealer: [${dVals.join(",")}]. Shared: [${sVals.join(",")}]. Available choices: ${Object.entries(choiceNames).map(([k,v]) => v).join(", ")}. ${strategy === "greedy" ? "You play aggressive — go for big wins." : "You play safe — minimize risk."}`;
+
+        const aiResponse = await callAI("player", [
+          { role: "system", content: "You are T800, an AI playing a casino game. Respond with ONLY the choice name (one word like HIT, STAND, HIGHER, LOWER, CHECK, FOLD, RED, BLACK). Nothing else. Pick based on the game state and your strategy." },
+          { role: "user", content: gameContext },
+        ]);
+
+        // Parse AI choice
+        const aiText = aiResponse.toUpperCase().trim();
+        let pick = 4; // default CHECK
+        for (const [bit, name] of Object.entries(choiceNames)) {
+          if (aiText.includes(name)) { pick = parseInt(bit); break; }
         }
-      } else if (statusKey === "settled") {
-        const mult = session.resultMultiplierBps || 0;
+
+        log(`> T800 chooses: ${choiceNames[pick]}`);
+        await callPlayerChoice(keypair, deployedTemplateId, pick);
+
+        currentSession = await waitForSessionUpdate(keypair);
+        statusKey = Object.keys(currentSession.status)[0];
+
+        const newVals = currentSession.playerValues || currentSession.sharedValues || [];
+        if (newVals.length > 0) log(`> Values: [${newVals.join(", ")}]`);
+      }
+
+      if (statusKey === "settled") {
+        const mult = currentSession.resultMultiplierBps || 0;
         if (mult > 0) {
           log(`> WIN! Payout: ${(mult / 100).toFixed(1)}x`);
         } else {
