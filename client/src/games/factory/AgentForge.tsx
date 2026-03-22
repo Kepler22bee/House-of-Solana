@@ -224,7 +224,7 @@ export default function AgentForge({ onClose, onTemplateCreated }: AgentForgePro
       setError("NEGOTIATION FAILED: " + (e instanceof Error ? e.message : String(e)));
       setPhase("error");
     }
-  }, [gameType, callAI, typeMessage]);
+  }, [gameType, strategy, callAI, typeMessage, waitForEnter]);
 
   const deployTemplate = useCallback(async () => {
     setPhase("deploying");
