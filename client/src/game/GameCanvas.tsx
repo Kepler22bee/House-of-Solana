@@ -13,6 +13,7 @@ import { loadTiledCasino, casinoTiledReady, CASINO_MAP_W, CASINO_MAP_H, CASINO_E
 import { createCompanion, updateCompanion, loadCompanionSprite, Companion } from "./companion";
 import { CoinTossGame } from "../games/coin-toss";
 import { PricePredictionGame } from "../games/price-prediction";
+import { BlackjackGame } from "../games/blackjack";
 
 interface DialogueState {
   active: boolean;
@@ -28,7 +29,7 @@ interface TileDialogueState {
 
 interface GameScreenState {
   active: boolean;
-  type: "coin_toss" | "price_prediction" | null;
+  type: "coin_toss" | "price_prediction" | "blackjack" | null;
 }
 
 export interface AgentMenuState {
@@ -124,7 +125,7 @@ export default function GameCanvas() {
   const companionRef = useRef<Companion>(createCompanion(playerRef.current));
 
   // React state for game overlays (so React components render)
-  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | null>(null);
+  const [activeGameScreen, setActiveGameScreen] = useState<"coin_toss" | "price_prediction" | "blackjack" | null>(null);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiChatMessages, setAiChatMessages] = useState<{ role: "user" | "assistant"; text: string }[]>([]);
   const [aiChatInput, setAiChatInput] = useState("");
@@ -218,6 +219,11 @@ export default function GameCanvas() {
         if (npcName === "Price Dealer" && sceneRef.current === "casino") {
           gameScreenRef.current = { active: true, type: "price_prediction" };
           setActiveGameScreen("price_prediction");
+        }
+        // After Blackjack Dealer's dialogue ends, open blackjack game
+        if (npcName === "Blackjack Dealer" && sceneRef.current === "casino") {
+          gameScreenRef.current = { active: true, type: "blackjack" };
+          setActiveGameScreen("blackjack");
         }
         return;
       }
@@ -650,6 +656,9 @@ Keep responses under 60 words.`;
       )}
       {activeGameScreen === "price_prediction" && (
         <PricePredictionGame onClose={closeGameScreen} />
+      )}
+      {activeGameScreen === "blackjack" && (
+        <BlackjackGame onClose={closeGameScreen} />
       )}
       {aiChatOpen && (
         <div style={{

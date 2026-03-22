@@ -136,6 +136,20 @@ export const casinoNpcs: NPC[] = [
   },
   {
     x: 14 * TILE_SIZE + 8,
+    y: 8 * TILE_SIZE + 8,
+    name: "Blackjack Dealer",
+    dialogue: [
+      "Welcome to the Blackjack table.",
+      "Get as close to 21 as you can without going over.",
+      "Beat the dealer and double your bet. Natural 21 pays 2.5x.",
+      "Take a seat when you're ready.",
+    ],
+    color: "#1a6b3c",
+    hairColor: "#2c3e50",
+    icon: "\u2660",
+  },
+  {
+    x: 14 * TILE_SIZE + 8,
     y: 12 * TILE_SIZE + 8,
     name: "Bartender Jin",
     dialogue: [
