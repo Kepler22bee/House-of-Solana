@@ -28,8 +28,8 @@ const PROGRAM_ID = new PublicKey(
   "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
 );
 
-const BASE_RPC_URL = "https://api.devnet.solana.com";
-const TEE_ER_BASE_URL = "https://tee.magicblock.app";
+const BASE_RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "http://localhost:8899";
+const TEE_ER_BASE_URL = process.env.NEXT_PUBLIC_TEE_URL || "http://localhost:8899";
 
 const DELEGATION_PROGRAM_ID = new PublicKey(
   "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
@@ -183,6 +183,14 @@ let _teeToken: string | null = null;
 let _teeErUrl: string | null = null;
 
 export async function authenticateTee(keypair: Keypair): Promise<string> {
+  // Skip TEE auth for localhost (local validator has no TEE)
+  const isLocal = TEE_ER_BASE_URL.includes("localhost") || TEE_ER_BASE_URL.includes("127.0.0.1");
+  if (isLocal) {
+    _teeErUrl = TEE_ER_BASE_URL;
+    console.log("[TEE] Local mode — skipping TEE auth");
+    return _teeErUrl;
+  }
+
   // Return cached token if available
   if (_teeToken && _teeErUrl) return _teeErUrl;
 
@@ -234,9 +242,10 @@ export function getBaseConnection(): Connection {
 export function getErConnection(): Connection {
   if (!_erConnection) {
     const url = _teeErUrl || TEE_ER_BASE_URL;
+    const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
     _erConnection = new Connection(url, {
       commitment: "confirmed",
-      wsEndpoint: url.replace("https://", "wss://"),
+      wsEndpoint: isLocal ? url.replace("http://", "ws://") : url.replace("https://", "wss://"),
     });
   }
   return _erConnection;
@@ -475,6 +484,10 @@ async function delegatePda(
 }
 
 export async function ensureGameDelegated(keypair: Keypair): Promise<void> {
+  // Skip delegation on localhost (no ER delegation program)
+  const isLocal = TEE_ER_BASE_URL.includes("localhost") || TEE_ER_BASE_URL.includes("127.0.0.1");
+  if (isLocal) return;
+
   const cacheKey = getDelegationCacheKey(keypair.publicKey);
   if (typeof window !== "undefined" && localStorage.getItem(cacheKey) === "1")
     return;
