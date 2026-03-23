@@ -11,6 +11,7 @@ import { loadAllSprites } from "./sprites";
 import { loadTiledMap, CASINO_BUILDING } from "./tiledMap";
 import { loadTiledCasino, casinoTiledReady, CASINO_MAP_W, CASINO_MAP_H, CASINO_EXIT, isInCasinoExit, isInVipZone } from "./tiledCasino";
 import { createCompanion, updateCompanion, loadCompanionSprite, Companion } from "./companion";
+import { chatWithNpc, isNpcBored, getGreeting } from "./npc-ai";
 import { CoinTossGame } from "../games/coin-toss";
 import { BlackjackGame } from "../games/blackjack";
 import AgentForge from "../games/factory/AgentForge";
@@ -20,6 +21,8 @@ interface DialogueState {
   active: boolean;
   npc: NPC | null;
   line: number;
+  lines: string[];
+  aiLoading: boolean;
 }
 
 interface TileDialogueState {
@@ -118,7 +121,7 @@ export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<Player>(createPlayer());
   const keysRef = useRef<Set<string>>(new Set());
-  const dialogueRef = useRef<DialogueState>({ active: false, npc: null, line: 0 });
+  const dialogueRef = useRef<DialogueState>({ active: false, npc: null, line: 0, lines: [], aiLoading: false });
   const tileDialogueRef = useRef<TileDialogueState>({ active: false, lines: [], line: 0 });
   const gameScreenRef = useRef<GameScreenState>({ active: false, type: null });
   const introRef = useRef<IntroState>({ active: false, line: 0, dismissed: true });
@@ -208,36 +211,62 @@ export default function GameCanvas() {
     const player = playerRef.current;
 
     if (dialogueRef.current.active && dialogueRef.current.npc) {
-      dialogueRef.current.line++;
-      if (dialogueRef.current.line >= dialogueRef.current.npc.dialogue.length) {
-        const npcName = dialogueRef.current.npc.name;
-        dialogueRef.current = { active: false, npc: null, line: 0 };
-        // After Yuki's dialogue ends, enter casino
-        if (npcName === YUKI_NAME && sceneRef.current === "overworld") {
-          switchToCasino();
-        }
-        // After Coin Toss Dealer's dialogue ends, open coin toss game
-        if (npcName === "Coin Toss Dealer" && sceneRef.current === "casino") {
+      const dlg = dialogueRef.current;
+      // If AI is loading, ignore E press
+      if (dlg.aiLoading) return;
+
+      // If there are more lines to show, advance
+      if (dlg.line < dlg.lines.length - 1) {
+        dlg.line++;
+        return;
+      }
+
+      // We're on the last line — check if this is an action NPC
+      const npc = dlg.npc!;
+      const npcName = npc.name;
+
+      const isActionNpc = (npcName === YUKI_NAME && sceneRef.current === "overworld") ||
+        (npcName === "Coin Toss Dealer" && sceneRef.current === "casino") ||
+        (npcName === "Blackjack Dealer" && sceneRef.current === "casino") ||
+        (npcName === "Agent Forge" && sceneRef.current === "casino") ||
+        (npcName === "Table Master" && sceneRef.current === "casino");
+
+      if (isActionNpc) {
+        dialogueRef.current = { active: false, npc: null, line: 0, lines: [], aiLoading: false };
+        if (npcName === YUKI_NAME) switchToCasino();
+        if (npcName === "Coin Toss Dealer") {
           gameScreenRef.current = { active: true, type: "coin_toss" };
           setActiveGameScreen("coin_toss");
         }
-        // After Blackjack Dealer's dialogue ends, open blackjack game
-        if (npcName === "Blackjack Dealer" && sceneRef.current === "casino") {
+        if (npcName === "Blackjack Dealer") {
           gameScreenRef.current = { active: true, type: "blackjack" };
           setActiveGameScreen("blackjack");
         }
-        // After Factory Host's dialogue ends, open factory game browser
-        if (npcName === "Agent Forge" && sceneRef.current === "casino") {
+        if (npcName === "Agent Forge") {
           gameScreenRef.current = { active: true, type: "factory" };
           setActiveGameScreen("factory");
         }
-        // After Table Master's dialogue ends, open multiplayer lobby
-        if (npcName === "Table Master" && sceneRef.current === "casino") {
+        if (npcName === "Table Master") {
           gameScreenRef.current = { active: true, type: "multiplayer" };
           setActiveGameScreen("multiplayer");
         }
         return;
       }
+
+      // Check if NPC is bored
+      if (isNpcBored(npcName)) {
+        dialogueRef.current = { active: false, npc: null, line: 0, lines: [], aiLoading: false };
+        return;
+      }
+
+      // Fetch next AI response
+      dlg.aiLoading = true;
+      dlg.lines.push("...");
+      dlg.line = dlg.lines.length - 1;
+      chatWithNpc(npc).then((reply) => {
+        dlg.lines[dlg.lines.length - 1] = reply;
+        dlg.aiLoading = false;
+      });
       return;
     }
 
@@ -281,7 +310,9 @@ export default function GameCanvas() {
       if (dist < 60) {
         // Bouncer Kaz can't be talked to directly — only triggers from stairs
         if (npc.name === "Bouncer Kaz") continue;
-        dialogueRef.current = { active: true, npc, line: 0 };
+        if (isNpcBored(npc.name)) continue;
+        const greeting = getGreeting(npc);
+        dialogueRef.current = { active: true, npc, line: 0, lines: [greeting], aiLoading: false };
         return;
       }
     }
@@ -313,19 +344,20 @@ export default function GameCanvas() {
             "The upper floor awaits... (Coming Soon)",
           ], line: 0 };
         } else {
+          const bouncerLines = [
+            "Hold it right there.",
+            "The upper floor is for high rollers only.",
+            `You need 5000 points. You have ${playerMoney}.`,
+            "Go win some games and come back when you're worthy.",
+          ];
           dialogueRef.current = { active: true, npc: {
             x: playerRef.current.x,
             y: playerRef.current.y - 40,
             name: "Bouncer Kaz",
-            dialogue: [
-              "Hold it right there.",
-              "The upper floor is for high rollers only.",
-              `You need 5000 points. You have ${playerMoney}.`,
-              "Go win some games and come back when you're worthy.",
-            ],
+            dialogue: bouncerLines,
             color: "#2c3e50",
             hairColor: "#1a1a1a",
-          }, line: 0 };
+          }, line: 0, lines: bouncerLines, aiLoading: false };
         }
         return;
       }
@@ -368,7 +400,7 @@ export default function GameCanvas() {
         }
         if (dialogueRef.current.active) {
           const npcName = dialogueRef.current.npc?.name;
-          dialogueRef.current = { active: false, npc: null, line: 0 };
+          dialogueRef.current = { active: false, npc: null, line: 0, lines: [], aiLoading: false };
           if (npcName === YUKI_NAME && sceneRef.current === "overworld") {
             switchToCasino();
           }
@@ -511,19 +543,20 @@ export default function GameCanvas() {
         if (isInVipZone(ptx, pty) && !dialogueRef.current.active) {
           // Push player back down
           playerRef.current.y = 3 * TILE_SIZE;
+          const bLines = [
+            "Hold it right there.",
+            "The upper floor is for high rollers only.",
+            `You need 5000 points. You have ${playerMoney}.`,
+            "Go win some games and come back when you're worthy.",
+          ];
           dialogueRef.current = { active: true, npc: {
             x: playerRef.current.x,
             y: playerRef.current.y - 40,
             name: "Bouncer Kaz",
-            dialogue: [
-              "Hold it right there.",
-              "The upper floor is for high rollers only.",
-              `You need 5000 points. You have ${playerMoney}.`,
-              "Go win some games and come back when you're worthy.",
-            ],
+            dialogue: bLines,
             color: "#2c3e50",
             hairColor: "#1a1a1a",
-          }, line: 0 };
+          }, line: 0, lines: bLines, aiLoading: false };
         }
       }
 

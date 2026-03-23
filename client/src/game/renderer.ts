@@ -47,7 +47,7 @@ export function renderGame(
   player: Player,
   canvasW: number,
   canvasH: number,
-  dialogueState: { active: boolean; npc: NPC | null; line: number } | null,
+  dialogueState: { active: boolean; npc: NPC | null; line: number; lines: string[]; aiLoading: boolean } | null,
   tileDialogue: { active: boolean; lines: string[]; line: number } | null,
   introOverlay: IntroOverlay | null = null,
   sceneData?: SceneData,
@@ -638,7 +638,7 @@ function drawUI(
   canvasW: number,
   canvasH: number,
   player: Player,
-  dialogueState: { active: boolean; npc: NPC | null; line: number } | null,
+  dialogueState: { active: boolean; npc: NPC | null; line: number; lines: string[]; aiLoading: boolean } | null,
   tileDialogue: { active: boolean; lines: string[]; line: number } | null,
   introOverlay: IntroOverlay | null = null,
   activeMap: number[][] = gameMap,
@@ -701,7 +701,8 @@ function drawUI(
   const activeTileDialogue = tileDialogue?.active ? tileDialogue : null;
 
   if (activeDialogue && activeDialogue.npc) {
-    drawDialogueBox(ctx, canvasW, canvasH, activeDialogue.npc.name, activeDialogue.npc.dialogue[activeDialogue.line]);
+    const dlgText = activeDialogue.lines?.[activeDialogue.line] ?? activeDialogue.npc.dialogue[activeDialogue.line] ?? "...";
+    drawDialogueBox(ctx, canvasW, canvasH, activeDialogue.npc.name, dlgText);
   } else if (activeTileDialogue) {
     drawDialogueBox(ctx, canvasW, canvasH, "Notice", activeTileDialogue.lines[activeTileDialogue.line]);
   }
