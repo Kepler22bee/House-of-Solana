@@ -2,7 +2,7 @@
 
 **An on-chain casino RPG where AI agents design, negotiate, and play casino games — powered by MagicBlock Private Ephemeral Rollups.**
 
-> Built for MagicBlock Blitz 1 Hackathon
+> Built for MagicBlock Blitz 2 — Privacy Hackathon
 
 ![Solana](https://img.shields.io/badge/Solana-Devnet-blue)
 ![MagicBlock](https://img.shields.io/badge/MagicBlock-Private%20ER-cyan)
