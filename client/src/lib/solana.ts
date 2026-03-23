@@ -506,13 +506,6 @@ export async function ensureGameDelegated(keypair: Keypair): Promise<void> {
   await delegatePda(keypair, "delegateCoinToss", coinTossPDA, "Coin Toss");
   await delegatePda(keypair, "delegateBlackjack", blackjackPDA, "Blackjack");
 
-  // Delegate session if it exists (created by factory games)
-  const [sessionPDA] = getSessionPDA(keypair.publicKey);
-  const sessionInfo = await getBaseConnection().getAccountInfo(sessionPDA, "confirmed");
-  if (sessionInfo && sessionInfo.owner.equals(PROGRAM_ID)) {
-    await delegatePda(keypair, "delegateSession", sessionPDA, "Session");
-  }
-
   if (typeof window !== "undefined") {
     localStorage.setItem(cacheKey, "1");
   }
@@ -563,11 +556,6 @@ export async function ensureAllUndelegated(keypair: Keypair): Promise<void> {
       pda: getBlackjackPDA(keypair.publicKey)[0],
       method: "commitBlackjack",
       label: "Blackjack",
-    },
-    {
-      pda: getSessionPDA(keypair.publicKey)[0],
-      method: "commitSession",
-      label: "Session",
     },
   ];
 
@@ -745,75 +733,6 @@ export async function callSetupPermissions(keypair: Keypair): Promise<string> {
           blackjack: blackjackPDA,
           permissionCoinToss,
           permissionBlackjack,
-          permissionProgram: PERMISSION_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc()
-    );
-    txConfirmed(id, tx);
-    return tx;
-  } catch (e) {
-    const msg = normalizeProgramError(e);
-    if (msg.includes("already in use")) {
-      txConfirmed(id, "already-setup");
-      return "already-setup";
-    }
-    txError(id, msg.slice(0, 80));
-    throw e;
-  }
-}
-
-export async function callSetupSessionPermission(keypair: Keypair): Promise<string> {
-  const id = txPending("Setup Session Permission");
-  try {
-    const program = getProgram(keypair, "base");
-    const [sessionPDA] = getSessionPDA(keypair.publicKey);
-    const [permissionSession] = getPermissionPDA(sessionPDA);
-
-    const tx = await withBlockhashRetry<string>(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (program.methods as any)
-        .setupSessionPermission()
-        .accounts({
-          authority: keypair.publicKey,
-          session: sessionPDA,
-          permissionSession,
-          permissionProgram: PERMISSION_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc()
-    );
-    txConfirmed(id, tx);
-    return tx;
-  } catch (e) {
-    const msg = normalizeProgramError(e);
-    if (msg.includes("already in use")) {
-      txConfirmed(id, "already-setup");
-      return "already-setup";
-    }
-    txError(id, msg.slice(0, 80));
-    throw e;
-  }
-}
-
-export async function callSetupTablePermission(
-  keypair: Keypair,
-  tableId: number
-): Promise<string> {
-  const id = txPending("Setup Table Permission");
-  try {
-    const program = getProgram(keypair, "base");
-    const [tablePDA] = getTablePDA(tableId);
-    const [permissionTable] = getPermissionPDA(tablePDA);
-
-    const tx = await withBlockhashRetry<string>(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (program.methods as any)
-        .setupTablePermission()
-        .accounts({
-          authority: keypair.publicKey,
-          table: tablePDA,
-          permissionTable,
           permissionProgram: PERMISSION_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
         })

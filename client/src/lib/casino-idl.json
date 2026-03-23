@@ -1,5 +1,5 @@
 {
-  "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg",
+  "address": "FSrt29ZsdApg3deAzHApU44RDVWYE6d9Nt6wjHojZn8u",
   "metadata": {
     "name": "house_of_solana",
     "version": "0.1.0",
@@ -503,40 +503,6 @@
         101,
         42,
         253
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "pda",
-          "writable": true
-        },
-        {
-          "name": "magic_program",
-          "address": "Magic11111111111111111111111111111111111111"
-        },
-        {
-          "name": "magic_context",
-          "writable": true,
-          "address": "MagicContext1111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "commit_session",
-      "discriminator": [
-        75,
-        2,
-        56,
-        144,
-        89,
-        208,
-        173,
-        167
       ],
       "accounts": [
         {
@@ -1127,173 +1093,6 @@
         199,
         254,
         89
-      ],
-      "accounts": [
-        {
-          "name": "payer",
-          "signer": true
-        },
-        {
-          "name": "buffer_pda",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  117,
-                  102,
-                  102,
-                  101,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "pda"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                109,
-                147,
-                57,
-                35,
-                65,
-                89,
-                248,
-                231,
-                140,
-                227,
-                155,
-                49,
-                3,
-                37,
-                160,
-                15,
-                1,
-                246,
-                12,
-                191,
-                105,
-                216,
-                156,
-                29,
-                204,
-                1,
-                251,
-                153,
-                243,
-                146,
-                17,
-                147
-              ]
-            }
-          }
-        },
-        {
-          "name": "delegation_record_pda",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  101,
-                  108,
-                  101,
-                  103,
-                  97,
-                  116,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "pda"
-              }
-            ],
-            "program": {
-              "kind": "account",
-              "path": "delegation_program"
-            }
-          }
-        },
-        {
-          "name": "delegation_metadata_pda",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100,
-                  101,
-                  108,
-                  101,
-                  103,
-                  97,
-                  116,
-                  105,
-                  111,
-                  110,
-                  45,
-                  109,
-                  101,
-                  116,
-                  97,
-                  100,
-                  97,
-                  116,
-                  97
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "pda"
-              }
-            ],
-            "program": {
-              "kind": "account",
-              "path": "delegation_program"
-            }
-          }
-        },
-        {
-          "name": "pda",
-          "writable": true
-        },
-        {
-          "name": "owner_program",
-          "address": "8NjeMQCn3oVC3t9MBbvq3ypLxbU8jhxmmiZHtPGJeVBg"
-        },
-        {
-          "name": "delegation_program",
-          "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "delegate_session",
-      "discriminator": [
-        82,
-        83,
-        119,
-        119,
-        196,
-        219,
-        5,
-        197
       ],
       "accounts": [
         {
@@ -2286,162 +2085,20 @@
           }
         },
         {
-          "name": "blackjack",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  98,
-                  108,
-                  97,
-                  99,
-                  107,
-                  106,
-                  97,
-                  99,
-                  107
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
+          "name": "group",
+          "writable": true
         },
         {
           "name": "permission_coin_toss",
           "writable": true
         },
         {
-          "name": "permission_blackjack",
-          "writable": true
+          "name": "permission_program",
+          "address": "BTWAqWNBmF2TboMh3fxMJfgR16xGHYD7Kgr2dPwbRPBi"
         },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "permission_program",
-          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "setup_session_permission",
-      "discriminator": [
-        131,
-        90,
-        35,
-        88,
-        67,
-        28,
-        68,
-        223
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "session",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  115,
-                  101,
-                  115,
-                  115,
-                  105,
-                  111,
-                  110
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
-        },
-        {
-          "name": "permission_session",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "permission_program",
-          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
-        }
-      ],
-      "args": []
-    },
-    {
-      "name": "setup_table_permission",
-      "discriminator": [
-        171,
-        59,
-        199,
-        86,
-        121,
-        220,
-        9,
-        58
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "table",
-          "docs": [
-            "The table account"
-          ],
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  116,
-                  97,
-                  98,
-                  108,
-                  101
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "table.id",
-                "account": "Table"
-              }
-            ]
-          }
-        },
-        {
-          "name": "permission_table",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "permission_program",
-          "address": "ACLseoPoyC3cBqoUtkbjZ4aDrkurZW86v19pXz2XQnp1"
         }
       ],
       "args": []
