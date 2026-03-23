@@ -23,6 +23,48 @@ type Phase = "betting" | "dealing" | "playing" | "dealer_turn" | "result";
 
 const BET_PRESETS = [100, 250, 500, 1000];
 
+/* ─── Wakana expressions ─── */
+const WAKANA_BASE = "/Wakana Merchant/wakana_merchant_";
+type Expression = "neutral" | "happy" | "excited" | "devious" | "devious2" | "surprised" |
+  "disappointed" | "pleased" | "annoyed" | "proud" | "sad" | "unimpressed";
+
+function getDealerExpression(phase: Phase, resultKey: string | undefined): Expression {
+  if (phase === "betting") return "neutral";
+  if (phase === "dealing") return "excited";
+  if (phase === "playing") return "excited";
+  if (phase === "dealer_turn") return "devious";
+  if (resultKey === "blackjack") return "surprised";
+  if (resultKey === "playerWin" || resultKey === "dealerBust") return "disappointed";
+  if (resultKey === "dealerWin" || resultKey === "playerBust") return "proud";
+  if (resultKey === "push") return "pleased";
+  return "neutral";
+}
+
+function getDefaultQuote(phase: Phase, resultKey: string | undefined): string {
+  if (phase === "betting") return "Place your wager~";
+  if (phase === "dealing") return "Shuffling the deck...";
+  if (phase === "playing") return "Hit or stand?";
+  if (phase === "dealer_turn") return "Let me see...";
+  if (resultKey === "blackjack") return "Blackjack?! Impressive...";
+  if (resultKey === "playerWin" || resultKey === "dealerBust") return "Well played~";
+  if (resultKey === "dealerWin" || resultKey === "playerBust") return "Better luck next time~";
+  if (resultKey === "push") return "A tie! How rare.";
+  return "";
+}
+
+const FLIRT_OPTIONS = [
+  "You look stunning tonight",
+  "Are you always this lucky?",
+  "Can I buy you a drink?",
+  "What's a girl like you doing dealing cards?",
+  "You're distracting me from my cards",
+  "Tell me a secret",
+  "Do you come here often?",
+  "Is it hot in here or is it just you?",
+];
+
+const WAKANA_SYSTEM = `You are Wakana, a charming and witty blackjack dealer at House of Solana casino. You're a young woman in a traditional merchant outfit. You're playful, slightly flirty but always classy — never crude. You deflect overly forward comments with humor. You love your job and sometimes tease players about their luck. Keep responses to 1-2 short sentences max. Use ~ occasionally. Never break character.`;
+
 const SUIT_SYMBOLS: Record<string, string> = {
   hearts: "\u2665",
   diamonds: "\u2666",
@@ -102,6 +144,46 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  // Wakana flirt state
+  const [wakanaReply, setWakanaReply] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [showFlirtMenu, setShowFlirtMenu] = useState(false);
+  const chatHistoryRef = useRef<{ role: string; content: string }[]>([]);
+
+  const expression = getDealerExpression(phase, gameResult);
+  const defaultQuote = getDefaultQuote(phase, gameResult);
+  const dealerQuote = wakanaReply || defaultQuote;
+
+  const sendFlirt = async (msg: string) => {
+    setShowFlirtMenu(false);
+    setChatLoading(true);
+    setWakanaReply("...");
+    chatHistoryRef.current.push({ role: "user", content: msg });
+    try {
+      const res = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agent: "player",
+          messages: [
+            { role: "system", content: WAKANA_SYSTEM },
+            ...chatHistoryRef.current.slice(-8),
+          ],
+          max_tokens: 80,
+        }),
+      });
+      const data = await res.json();
+      const reply = data.choices?.[0]?.message?.content || "Hmm~?";
+      setWakanaReply(reply);
+      chatHistoryRef.current.push({ role: "assistant", content: reply });
+      setTimeout(() => setWakanaReply(null), 5000);
+    } catch {
+      setWakanaReply("Heh, I'm speechless~");
+      setTimeout(() => setWakanaReply(null), 3000);
+    }
+    setChatLoading(false);
+  };
 
   useEffect(() => { overlayRef.current?.focus(); }, []);
 
@@ -250,16 +332,119 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
       <style>{KEYFRAMES}</style>
 
       <div style={{
-        width: 700, maxWidth: "95vw", maxHeight: "90vh",
-        background: "radial-gradient(ellipse at 50% 40%, #1a6b3c 0%, #145a30 50%, #0e4525 100%)",
-        borderRadius: 20,
-        border: "4px solid #5a3a1a",
-        boxShadow: "0 0 0 4px #3a2510, 0 0 60px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.3)",
-        position: "relative",
-        display: "flex", flexDirection: "column",
-        overflow: "hidden",
-        animation: "glowPulse 4s ease-in-out infinite",
+        display: "flex", alignItems: "stretch",
+        maxWidth: "95vw", maxHeight: "90vh",
+        gap: 0,
       }}>
+        {/* Wakana dealer character - left side */}
+        <div style={{
+          width: 220, minWidth: 220,
+          background: "linear-gradient(180deg, #1a1520 0%, #2a2030 50%, #1a1520 100%)",
+          borderRadius: "24px 0 0 24px",
+          border: "4px solid #5a3a1a",
+          borderRight: "none",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "flex-end",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Speech bubble */}
+          <div style={{
+            position: "absolute", top: 12, left: 12, right: 12,
+            background: "rgba(255,255,255,0.9)",
+            borderRadius: 12,
+            padding: "8px 10px",
+            fontSize: 11, color: "#1a1a2e",
+            textAlign: "center",
+            zIndex: 2,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          }}>
+            <div style={{
+              position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)",
+              width: 0, height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "6px solid rgba(255,255,255,0.9)",
+            }} />
+            {dealerQuote}
+          </div>
+
+          {/* Wakana image */}
+          <img
+            src={`${WAKANA_BASE}${expression}.png`}
+            alt="Dealer Wakana"
+            style={{
+              width: 200, height: "auto",
+              objectFit: "contain",
+              imageRendering: "auto",
+              filter: "drop-shadow(0 0 12px rgba(100,60,200,0.3))",
+              transition: "opacity 0.3s",
+            }}
+          />
+
+          {/* Flirt button + menu */}
+          <div style={{ position: "absolute", bottom: 30, left: 0, right: 0, zIndex: 3 }}>
+            {showFlirtMenu && (
+              <div style={{
+                position: "absolute", bottom: 32, left: 8, right: 8,
+                background: "rgba(20,15,30,0.95)",
+                border: "1px solid #ffd70066",
+                borderRadius: 8,
+                padding: 6,
+                maxHeight: 200, overflowY: "auto",
+              }}>
+                {FLIRT_OPTIONS.map((opt, i) => (
+                  <button key={i} onClick={() => sendFlirt(opt)} disabled={chatLoading} style={{
+                    display: "block", width: "100%",
+                    background: "transparent", border: "none",
+                    color: "#ffd700", fontSize: 10, fontFamily: "inherit",
+                    padding: "5px 6px", textAlign: "left",
+                    cursor: chatLoading ? "not-allowed" : "pointer",
+                    borderBottom: i < FLIRT_OPTIONS.length - 1 ? "1px solid #ffffff15" : "none",
+                  }}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setShowFlirtMenu(!showFlirtMenu)} style={{
+              display: "block", margin: "0 auto",
+              background: "linear-gradient(135deg, #e91e63, #c2185b)",
+              border: "2px solid #ffd70066",
+              borderRadius: 16, padding: "4px 14px",
+              color: "#fff", fontSize: 10, fontFamily: "inherit",
+              cursor: "pointer", fontWeight: "bold",
+              boxShadow: "0 2px 8px rgba(233,30,99,0.4)",
+            }}>
+              {showFlirtMenu ? "Nevermind" : "\u2764 Chat"}
+            </button>
+          </div>
+
+          {/* Name plate */}
+          <div style={{
+            position: "absolute", bottom: 8, left: 0, right: 0,
+            textAlign: "center",
+            color: "#ffd700", fontSize: 11, fontWeight: "bold",
+            letterSpacing: 2, textTransform: "uppercase",
+            textShadow: "0 0 6px rgba(255,215,0,0.5)",
+          }}>
+            Wakana
+          </div>
+        </div>
+
+        {/* Table */}
+        <div style={{
+          width: 650,
+          background: "radial-gradient(ellipse at 50% 40%, #1a6b3c 0%, #145a30 50%, #0e4525 100%)",
+          borderRadius: "0 24px 24px 0",
+          border: "4px solid #5a3a1a",
+          borderLeft: "2px solid #5a3a1a",
+          boxShadow: "0 0 0 4px #3a2510, 0 0 60px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.3)",
+          position: "relative",
+          display: "flex", flexDirection: "column",
+          overflow: "hidden",
+          animation: "glowPulse 4s ease-in-out infinite",
+        }}>
         {/* Top bar */}
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -383,7 +568,8 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
             <ActionButton label="NEW HAND" onClick={newHand} color="#e6a817" />
           )}
         </div>
-      </div>
+        </div>{/* end table */}
+      </div>{/* end flex wrapper */}
     </div>
   );
 }

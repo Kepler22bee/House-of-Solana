@@ -99,8 +99,8 @@ export function updatePlayer(
 
     // Animation
     player.animTimer += dt;
-    if (player.animTimer > 150) {
-      player.animFrame = (player.animFrame + 1) % 4;
+    if (player.animTimer > 120) {
+      player.animFrame = (player.animFrame + 1) % FRAMES_PER_DIR;
       player.animTimer = 0;
     }
   } else {
@@ -159,70 +159,58 @@ export function getOverworldMapData(): MapData {
   return { map: gameMap, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
+/* ── Memao Fantasy Sprite Pack (Galv format) ── */
+// Each sheet: 528×328, 8 cols × 4 rows
+// Frame size: 66×82
+// Row order: 0=down, 1=left, 2=right, 3=up
+
+export const FRAME_W = 66;
+export const FRAME_H = 82;
+export const FRAMES_PER_DIR = 8;
+
+export const DIR_ROW: Record<Direction, number> = {
+  down: 0,
+  left: 1,
+  right: 2,
+  up: 3,
+};
+
+export const CHAR_COUNT = 10;
+
+function loadImg(src: string): HTMLImageElement | null {
+  if (typeof window === "undefined") return null;
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+
+// Load all 10 character sheets
+export const charSheets: (HTMLImageElement | null)[] = [];
+for (let i = 1; i <= CHAR_COUNT; i++) {
+  charSheets.push(loadImg(`/characters/char${i}.png`));
+}
+
+// Player uses char1
+const PLAYER_SHEET_IDX = 0;
+
 export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player, camX: number, camY: number) {
   const px = Math.round(player.x - camX);
   const py = Math.round(player.y - camY);
-
-  const bobY = player.moving ? Math.sin(player.animFrame * Math.PI / 2) * 2 : 0;
+  const drawSize = TILE_SIZE;
 
   // Shadow
   ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
-  ctx.ellipse(px + 16, py + 30, 10, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(px + drawSize / 2, py + drawSize - 2, drawSize * 0.3, 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Legs
-  const legOffset = player.moving ? Math.sin(player.animFrame * Math.PI / 2) * 3 : 0;
-  ctx.fillStyle = "#4a3728";
-  ctx.fillRect(px + 8 - legOffset, py + 24 - bobY, 6, 8);
-  ctx.fillRect(px + 18 + legOffset, py + 24 - bobY, 6, 8);
+  const sheet = charSheets[PLAYER_SHEET_IDX];
+  if (!sheet || !sheet.complete) return;
 
-  // Body (red cloak)
-  ctx.fillStyle = "#c0392b";
-  ctx.fillRect(px + 6, py + 12 - bobY, 20, 14);
-  // Cloak center
-  ctx.fillStyle = "#e74c3c";
-  ctx.fillRect(px + 10, py + 12 - bobY, 12, 14);
+  const row = DIR_ROW[player.direction];
+  const frame = player.moving ? (player.animFrame % FRAMES_PER_DIR) : 0;
+  const srcX = frame * FRAME_W;
+  const srcY = row * FRAME_H;
 
-  // Arms
-  const armSwing = player.moving ? Math.sin(player.animFrame * Math.PI / 2) * 4 : 0;
-  ctx.fillStyle = "#c0392b";
-  ctx.fillRect(px + 2, py + 14 - bobY + armSwing, 5, 10);
-  ctx.fillRect(px + 25, py + 14 - bobY - armSwing, 5, 10);
-
-  // Head
-  ctx.fillStyle = "#ffcc99";
-  ctx.fillRect(px + 8, py + 2 - bobY, 16, 12);
-
-  // Hair (white/silver)
-  ctx.fillStyle = "#f5f5f5";
-  ctx.fillRect(px + 6, py + 0 - bobY, 20, 6);
-  ctx.fillRect(px + 5, py + 2 - bobY, 3, 8);
-  ctx.fillRect(px + 24, py + 2 - bobY, 3, 8);
-
-  // Eyes based on direction
-  ctx.fillStyle = "#2d1b4e";
-  switch (player.direction) {
-    case "down":
-      ctx.fillRect(px + 10, py + 7 - bobY, 3, 3);
-      ctx.fillRect(px + 19, py + 7 - bobY, 3, 3);
-      break;
-    case "up":
-      // Show back of head
-      ctx.fillStyle = "#f5f5f5";
-      ctx.fillRect(px + 8, py + 2 - bobY, 16, 10);
-      break;
-    case "left":
-      ctx.fillRect(px + 9, py + 7 - bobY, 3, 3);
-      break;
-    case "right":
-      ctx.fillRect(px + 20, py + 7 - bobY, 3, 3);
-      break;
-  }
-
-  // Belt
-  ctx.fillStyle = "#8d6e63";
-  ctx.fillRect(px + 7, py + 22 - bobY, 18, 3);
-  ctx.fillStyle = "#fdd835";
-  ctx.fillRect(px + 14, py + 22 - bobY, 4, 3);
+  ctx.drawImage(sheet, srcX, srcY, FRAME_W, FRAME_H, px, py - 10, drawSize, drawSize + 10);
 }
