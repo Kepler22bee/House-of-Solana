@@ -222,14 +222,16 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
           background: "linear-gradient(170deg, #0d1117 0%, #0a0f14 40%, #0d1a0f 100%)",
           border: "2px solid #c8a84e",
           borderRadius: 16,
-          padding: "28px 36px 24px",
+          padding: "clamp(16px, 3vh, 28px) clamp(12px, 3vw, 36px) clamp(14px, 3vh, 24px)",
           maxWidth: 520,
           width: "92%",
+          maxHeight: "90vh",
+          overflowY: "auto",
           fontFamily: "'Courier New', monospace",
           color: "#e0e0e0",
           position: "relative",
           animation: "glowPulse 3s ease-in-out infinite",
-          overflow: "hidden",
+          overflow: "auto",
         }}
       >
         {/* Felt texture overlay */}
@@ -289,7 +291,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
           <h2
             style={{
               color: "#fdd835",
-              fontSize: 26,
+              fontSize: "clamp(18px, 5vw, 26px)",
               margin: "0 0 2px",
               letterSpacing: "0.15em",
               textShadow: "0 0 20px rgba(253,216,53,0.4)",
@@ -302,7 +304,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
             style={{
               color: "#6b6b4e",
               fontSize: 12,
-              margin: "0 0 24px",
+              margin: "0 0 clamp(12px, 3vh, 24px)",
               letterSpacing: "0.08em",
             }}
           >
@@ -317,7 +319,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
                 textAlign: "center",
                 fontSize: 11,
                 color: "#4a5568",
-                marginBottom: 20,
+                marginBottom: "clamp(12px, 3vh, 20px)",
               }}
             >
               <span
@@ -341,9 +343,9 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
                 <div
                   style={{
                     display: "flex",
-                    gap: 20,
+                    gap: "clamp(10px, 3vw, 20px)",
                     justifyContent: "center",
-                    marginBottom: 24,
+                    marginBottom: "clamp(12px, 3vh, 24px)",
                   }}
                 >
                   <CoinChoice
@@ -503,10 +505,10 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
 
                 <p
                   style={{
-                    fontSize: 28,
+                    fontSize: "clamp(20px, 5vw, 28px)",
                     fontWeight: "bold",
                     color: step.result.won ? "#4caf50" : "#e94560",
-                    margin: "16px 0 6px",
+                    margin: "clamp(10px, 2vh, 16px) 0 clamp(4px, 1vh, 6px)",
                     letterSpacing: "0.1em",
                     animation: step.result.won
                       ? "winGlow 1.5s ease-in-out infinite"
@@ -526,7 +528,7 @@ export default function CoinTossGame({ onClose, initialChoice, autoFlip }: CoinT
                   style={{
                     color: step.result.won ? "#4caf50" : "#6b4545",
                     fontSize: 13,
-                    marginBottom: 24,
+                    marginBottom: "clamp(14px, 3vh, 24px)",
                     fontWeight: step.result.won ? "bold" : "normal",
                   }}
                 >
@@ -653,16 +655,16 @@ function CoinDisplay({
   return (
     <div
       style={{
-        width: 100,
-        height: 100,
+        width: "clamp(70px, 18vw, 100px)",
+        height: "clamp(70px, 18vw, 100px)",
         margin: "0 auto",
         perspective: 600,
       }}
     >
       <div
         style={{
-          width: 100,
-          height: 100,
+          width: "100%",
+          height: "100%",
           borderRadius: "50%",
           background: isHeads
             ? "radial-gradient(ellipse at 35% 35%, #ffe082, #fdd835 40%, #c8a84e 80%, #8b6914)"
@@ -735,8 +737,8 @@ function CoinChoice({
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
       style={{
-        width: 110,
-        padding: "14px 0 10px",
+        width: "clamp(80px, 25vw, 110px)",
+        padding: "10px 0 8px",
         border: `2px solid ${selected ? "#fdd835" : active ? "#6b6b4e" : "#2a2a2a"}`,
         borderRadius: 12,
         background: selected
@@ -760,8 +762,8 @@ function CoinChoice({
       {/* Mini coin */}
       <div
         style={{
-          width: 52,
-          height: 52,
+          width: "clamp(38px, 10vw, 52px)",
+          height: "clamp(38px, 10vw, 52px)",
           borderRadius: "50%",
           background: isHeads
             ? "radial-gradient(ellipse at 35% 35%, #ffe082, #fdd835 40%, #c8a84e 80%, #8b6914)"
@@ -863,8 +865,8 @@ function primaryBtnStyle(enabled: boolean): React.CSSProperties {
   return {
     display: "block",
     width: "100%",
-    padding: "14px 0",
-    fontSize: 15,
+    padding: "clamp(10px, 2vh, 14px) 0",
+    fontSize: "clamp(12px, 2.5vw, 15px)",
     fontWeight: "bold",
     fontFamily: "'Courier New', monospace",
     letterSpacing: "0.12em",
@@ -881,8 +883,8 @@ function secondaryBtnStyle(): React.CSSProperties {
   return {
     display: "block",
     width: "100%",
-    padding: "14px 0",
-    fontSize: 15,
+    padding: "clamp(10px, 2vh, 14px) 0",
+    fontSize: "clamp(12px, 2.5vw, 15px)",
     fontWeight: "bold",
     fontFamily: "'Courier New', monospace",
     letterSpacing: "0.12em",

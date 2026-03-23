@@ -55,6 +55,7 @@ export function renderGame(
   agentMenu?: AgentMenuState | null,
   robot?: Robot | null,
   companion?: Companion | null,
+  zoom?: number,
 ) {
   const activeMap = sceneData?.map ?? gameMap;
   const activeNpcs = sceneData?.npcs ?? npcs;
@@ -64,26 +65,32 @@ export function renderGame(
   const activeW = useTiledOverworld ? TILED_MAP_WIDTH : useTiledCasino ? CASINO_MAP_W : (sceneData?.mapWidth ?? MAP_WIDTH);
   const activeH = useTiledOverworld ? TILED_MAP_HEIGHT : useTiledCasino ? CASINO_MAP_H : (sceneData?.mapHeight ?? MAP_HEIGHT);
 
-  const { camX, camY } = getCamera(player, canvasW, canvasH, activeW, activeH);
+  // Zoom out to show more of the map (mobile only)
+  const ZOOM = zoom ?? 1;
+  const zoomedW = canvasW / ZOOM;
+  const zoomedH = canvasH / ZOOM;
+
+  const { camX, camY } = getCamera(player, zoomedW, zoomedH, activeW, activeH);
 
   // Clear
   ctx.fillStyle = scene === "casino" ? "#0a0812" : "#1a3a2a";
   ctx.fillRect(0, 0, canvasW, canvasH);
 
   ctx.save();
+  ctx.scale(ZOOM, ZOOM);
   ctx.translate(-Math.round(camX), -Math.round(camY));
 
   if (useTiledOverworld) {
-    drawTiledMap(ctx, camX, camY, canvasW, canvasH);
+    drawTiledMap(ctx, camX, camY, zoomedW, zoomedH);
     drawCasinoBuilding(ctx);
   } else if (useTiledCasino) {
-    drawTiledCasino(ctx, camX, camY, canvasW, canvasH);
+    drawTiledCasino(ctx, camX, camY, zoomedW, zoomedH);
   } else {
     // Fallback: procedural tile-by-tile rendering (casino + pre-load)
     const startTX = Math.max(0, Math.floor(camX / TILE_SIZE) - 1);
     const startTY = Math.max(0, Math.floor(camY / TILE_SIZE) - 1);
-    const endTX = Math.min(activeW, Math.ceil((camX + canvasW) / TILE_SIZE) + 1);
-    const endTY = Math.min(activeH, Math.ceil((camY + canvasH) / TILE_SIZE) + 1);
+    const endTX = Math.min(activeW, Math.ceil((camX + zoomedW) / TILE_SIZE) + 1);
+    const endTY = Math.min(activeH, Math.ceil((camY + zoomedH) / TILE_SIZE) + 1);
 
     for (let ty = startTY; ty < endTY; ty++) {
       for (let tx = startTX; tx < endTX; tx++) {
