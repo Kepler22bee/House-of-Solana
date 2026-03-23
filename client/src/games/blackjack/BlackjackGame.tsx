@@ -1,5 +1,6 @@
 "use client";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useIsMobile } from "../../game/useMobile";
 import {
   getSessionKeypair,
   callStartHand,
@@ -131,6 +132,7 @@ function getStatusKey(bjStatus: unknown): string | undefined {
 }
 
 export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps) {
+  const isMobile = useIsMobile();
   const keypair = getSessionKeypair();
   const address = keypair.publicKey.toBase58();
   const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -332,12 +334,14 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
       <style>{KEYFRAMES}</style>
 
       <div style={{
-        display: "flex", alignItems: "stretch",
+        display: "flex", alignItems: isMobile ? "center" : "stretch",
+        flexDirection: isMobile ? "column" : "row",
         maxWidth: "95vw", maxHeight: "90vh",
+        width: isMobile ? "95vw" : "auto",
         gap: 0,
       }}>
-        {/* Wakana dealer character - left side */}
-        <div style={{
+        {/* Wakana dealer character - left side (hidden on mobile) */}
+        {!isMobile && <div style={{
           width: 220, minWidth: 220,
           background: "linear-gradient(180deg, #1a1520 0%, #2a2030 50%, #1a1520 100%)",
           borderRadius: "24px 0 0 24px",
@@ -430,19 +434,79 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
           }}>
             Wakana
           </div>
-        </div>
+        </div>}
+
+        {/* Mobile Wakana speech strip */}
+        {isMobile && (
+          <div style={{
+            width: "100%",
+            display: "flex", alignItems: "center", gap: 8,
+            background: "linear-gradient(90deg, #1a1520, #2a2030)",
+            borderRadius: "16px 16px 0 0",
+            border: "2px solid #5a3a1a",
+            borderBottom: "none",
+            padding: "6px 12px",
+          }}>
+            <img
+              src={`${WAKANA_BASE}${expression}.png`}
+              alt="Wakana"
+              style={{ width: 40, height: 40, objectFit: "cover", objectPosition: "center 10%", borderRadius: "50%", border: "2px solid #ffd700" }}
+            />
+            <div style={{ flex: 1, fontSize: 11, color: "#ddd", lineHeight: 1.4 }}>
+              <span style={{ color: "#ffd700", fontWeight: "bold", marginRight: 6 }}>Wakana</span>
+              {dealerQuote}
+            </div>
+            <div style={{ position: "relative" }}>
+              <button onClick={() => setShowFlirtMenu(!showFlirtMenu)} style={{
+                background: "linear-gradient(135deg, #e91e63, #c2185b)",
+                border: "1px solid #ffd70066",
+                borderRadius: 12, padding: "3px 10px",
+                color: "#fff", fontSize: 9, fontFamily: "inherit",
+                cursor: "pointer", fontWeight: "bold",
+                whiteSpace: "nowrap",
+              }}>
+                {showFlirtMenu ? "X" : "\u2764"}
+              </button>
+              {showFlirtMenu && (
+                <div style={{
+                  position: "absolute", top: "100%", right: 0, marginTop: 4,
+                  background: "rgba(20,15,30,0.97)",
+                  border: "1px solid #ffd70066",
+                  borderRadius: 8,
+                  padding: 4,
+                  width: 200,
+                  maxHeight: 160, overflowY: "auto",
+                  zIndex: 10,
+                }}>
+                  {FLIRT_OPTIONS.map((opt, i) => (
+                    <button key={i} onClick={() => sendFlirt(opt)} disabled={chatLoading} style={{
+                      display: "block", width: "100%",
+                      background: "transparent", border: "none",
+                      color: "#ffd700", fontSize: 10, fontFamily: "inherit",
+                      padding: "4px 6px", textAlign: "left",
+                      cursor: chatLoading ? "not-allowed" : "pointer",
+                      borderBottom: i < FLIRT_OPTIONS.length - 1 ? "1px solid #ffffff15" : "none",
+                    }}>
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Table */}
         <div style={{
-          width: 650,
+          width: isMobile ? "100%" : 650,
           background: "radial-gradient(ellipse at 50% 40%, #1a6b3c 0%, #145a30 50%, #0e4525 100%)",
-          borderRadius: "0 24px 24px 0",
+          borderRadius: isMobile ? "0 0 16px 16px" : "0 24px 24px 0",
           border: "4px solid #5a3a1a",
-          borderLeft: "2px solid #5a3a1a",
+          borderLeft: isMobile ? "4px solid #5a3a1a" : "2px solid #5a3a1a",
           boxShadow: "0 0 0 4px #3a2510, 0 0 60px rgba(0,0,0,0.5), inset 0 0 80px rgba(0,0,0,0.3)",
           position: "relative",
           display: "flex", flexDirection: "column",
-          overflow: "hidden",
+          overflow: isMobile ? "visible" : "hidden",
           animation: "glowPulse 4s ease-in-out infinite",
         }}>
         {/* Top bar */}
@@ -467,13 +531,13 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
 
         {/* Dealer area */}
         <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 0",
+          flex: isMobile ? "none" : 1, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 4, padding: isMobile ? "6px 0" : "8px 0",
         }}>
           <div style={{ color: "#aaa", fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>
             Dealer {dealerCards.length > 0 && `(${showDealerHole ? dealerTotal : dealerVisibleTotal}${!showDealerHole && dealerCards.length > 1 ? "+?" : ""})`}
           </div>
-          <div style={{ display: "flex", gap: 8, minHeight: 100, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 6, minHeight: isMobile ? 50 : 100, flexWrap: "wrap", justifyContent: "center" }}>
             {dealerCards.map((c, i) => (
               <CardView key={i} cardByte={c} hidden={!showDealerHole && i === 1} index={i} />
             ))}
@@ -520,10 +584,10 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
 
         {/* Player area */}
         <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 0",
+          flex: isMobile ? "none" : 1, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 4, padding: isMobile ? "6px 0" : "8px 0",
         }}>
-          <div style={{ display: "flex", gap: 8, minHeight: 100, flexWrap: "wrap", justifyContent: "center" }}>
+          <div style={{ display: "flex", gap: 6, minHeight: isMobile ? 50 : 100, flexWrap: "wrap", justifyContent: "center" }}>
             {playerCards.map((c, i) => (
               <CardView key={i} cardByte={c} hidden={false} index={i} />
             ))}
@@ -535,9 +599,10 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
 
         {/* Controls */}
         <div style={{
-          padding: "12px 16px",
+          padding: isMobile ? "8px 10px" : "12px 16px",
           background: "linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
-          display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap",
+          display: "flex", justifyContent: "center", gap: isMobile ? 6 : 10, flexWrap: "wrap",
+          flexShrink: 0,
         }}>
           {phase === "betting" && (
             <>
@@ -575,10 +640,13 @@ export default function BlackjackGame({ onClose, onResult }: BlackjackGameProps)
 }
 
 function CardView({ cardByte, hidden, index }: { cardByte: number; hidden: boolean; index: number }) {
+  const cw = "clamp(45px, 12vw, 65px)";
+  const ch = "clamp(65px, 17vw, 95px)";
+
   if (hidden) {
     return (
       <div style={{
-        width: 65, height: 95, borderRadius: 8,
+        width: cw, height: ch, borderRadius: 8,
         background: "linear-gradient(135deg, #1a3a6b 0%, #0d2240 100%)",
         border: "2px solid #4a6fa5",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -586,7 +654,7 @@ function CardView({ cardByte, hidden, index }: { cardByte: number; hidden: boole
         animation: `cardDeal 0.4s ease-out ${index * 0.15}s both`,
       }}>
         <div style={{
-          width: 45, height: 70, borderRadius: 4,
+          width: "70%", height: "75%", borderRadius: 4,
           border: "1px solid #4a6fa5",
           background: "repeating-linear-gradient(45deg, #1a3a6b, #1a3a6b 4px, #1e4080 4px, #1e4080 8px)",
         }} />
@@ -600,18 +668,18 @@ function CardView({ cardByte, hidden, index }: { cardByte: number; hidden: boole
 
   return (
     <div style={{
-      width: 65, height: 95, borderRadius: 8,
+      width: cw, height: ch, borderRadius: 8,
       background: "linear-gradient(180deg, #fff 0%, #f0ece4 100%)",
       border: "2px solid #ccc",
       display: "flex", flexDirection: "column",
-      padding: "4px 6px",
+      padding: "3px 5px",
       boxShadow: "2px 3px 8px rgba(0,0,0,0.3)",
       position: "relative",
       animation: `cardDeal 0.4s ease-out ${index * 0.15}s both`,
     }}>
-      <div style={{ color, fontSize: 14, fontWeight: "bold", lineHeight: 1 }}>{info.rank}</div>
-      <div style={{ color, fontSize: 10, lineHeight: 1 }}>{symbol}</div>
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color, fontSize: 28 }}>
+      <div style={{ color, fontSize: "clamp(10px, 2.5vw, 14px)", fontWeight: "bold", lineHeight: 1 }}>{info.rank}</div>
+      <div style={{ color, fontSize: "clamp(8px, 2vw, 10px)", lineHeight: 1 }}>{symbol}</div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color, fontSize: "clamp(18px, 5vw, 28px)" }}>
         {symbol}
       </div>
       <div style={{
@@ -633,10 +701,10 @@ function ChipButton({ value, selected, onClick, disabled }: { value: number; sel
 
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      width: 50, height: 50, borderRadius: "50%",
+      width: "clamp(38px, 9vw, 50px)", height: "clamp(38px, 9vw, 50px)", borderRadius: "50%",
       background: `radial-gradient(circle at 35% 35%, ${bg}, ${bg}dd)`,
       border: selected ? `3px solid #ffd700` : `3px dashed ${fg}66`,
-      color: fg, fontWeight: "bold", fontSize: 12,
+      color: fg, fontWeight: "bold", fontSize: "clamp(10px, 2vw, 12px)",
       cursor: disabled ? "not-allowed" : "pointer",
       opacity: disabled ? 0.4 : 1,
       fontFamily: "inherit",
@@ -652,9 +720,9 @@ function ChipButton({ value, selected, onClick, disabled }: { value: number; sel
 function ActionButton({ label, onClick, color, disabled }: { label: string; onClick: () => void; color: string; disabled?: boolean }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      padding: "10px 24px", borderRadius: 8,
+      padding: "clamp(6px, 1.5vw, 10px) clamp(14px, 4vw, 24px)", borderRadius: 8,
       background: color, color: "#fff", border: "2px solid rgba(255,255,255,0.2)",
-      fontFamily: "inherit", fontSize: 14, fontWeight: "bold",
+      fontFamily: "inherit", fontSize: "clamp(11px, 2.5vw, 14px)", fontWeight: "bold",
       cursor: disabled ? "not-allowed" : "pointer",
       opacity: disabled ? 0.4 : 1,
       letterSpacing: 1,

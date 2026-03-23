@@ -16,6 +16,9 @@ import { CoinTossGame } from "../games/coin-toss";
 import { BlackjackGame } from "../games/blackjack";
 import AgentForge from "../games/factory/AgentForge";
 import { MultiplayerGame } from "../games/multiplayer";
+import MobileControls from "./MobileControls";
+import { RotatePrompt, FullscreenButton } from "./MobileOverlays";
+import { useIsMobile } from "./useMobile";
 
 interface DialogueState {
   active: boolean;
@@ -118,6 +121,7 @@ const CASINO_INTRO_LINES = [
 const YUKI_NAME = "Dealer Yuki";
 
 export default function GameCanvas() {
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const playerRef = useRef<Player>(createPlayer());
   const keysRef = useRef<Set<string>>(new Set());
@@ -139,6 +143,7 @@ export default function GameCanvas() {
   const [aiChatInput, setAiChatInput] = useState("");
   const [aiChatLoading, setAiChatLoading] = useState(false);
   const [clankerBet, setClankerBet] = useState<{ choice: number; autoFlip: boolean } | null>(null);
+  const [dialogueActive, setDialogueActive] = useState(false);
   const aiChatInputRef = useRef<HTMLInputElement>(null);
 
   const getActiveMap = useCallback((): { map: number[][]; width: number; height: number } => {
@@ -561,6 +566,11 @@ export default function GameCanvas() {
       }
 
 
+      // Sync dialogue state for React overlay (close button)
+      if (dialogueRef.current.active !== dialogueActive) {
+        setDialogueActive(dialogueRef.current.active);
+      }
+
       ctx.imageSmoothingEnabled = false;
 
       const sceneData: SceneData = {
@@ -588,6 +598,7 @@ export default function GameCanvas() {
         agentMenuRef.current.active ? agentMenuRef.current : null,
         null, // robot disabled
         companionRef.current,
+        isMobile ? 0.75 : 1,
       );
 
       animId = requestAnimationFrame(gameLoop);
@@ -602,6 +613,11 @@ export default function GameCanvas() {
       window.removeEventListener("click", handleClick);
     };
   }, [tryInteract, getActiveMap, getActiveNpcs]);
+
+  const dismissDialogue = useCallback(() => {
+    dialogueRef.current = { active: false, npc: null, line: 0, lines: [], aiLoading: false };
+    setDialogueActive(false);
+  }, []);
 
   const closeGameScreen = useCallback(() => {
     gameScreenRef.current = { active: false, type: null };
@@ -703,6 +719,50 @@ Keep responses under 60 words.`;
           cursor: "default",
         }}
       />
+      {/* Dialogue close button (mobile only) */}
+      {isMobile && dialogueActive && (
+        <button
+          onTouchStart={(e) => { e.preventDefault(); dismissDialogue(); }}
+          onClick={dismissDialogue}
+          style={{
+            position: "fixed",
+            bottom: 170,
+            right: 24,
+            zIndex: 85,
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            border: "2px solid #e94560",
+            background: "rgba(233,69,96,0.15)",
+            color: "#e94560",
+            fontSize: 18,
+            fontWeight: "bold",
+            fontFamily: "'Courier New', monospace",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          X
+        </button>
+      )}
+      {isMobile && <RotatePrompt />}
+      <FullscreenButton />
+      {isMobile && (
+        <MobileControls
+          keysRef={keysRef}
+          onInteract={tryInteract}
+          onToggleChat={() => setAiChatOpen(prev => !prev)}
+          onToggleAgentMenu={() => {
+            agentMenuRef.current = agentMenuRef.current.active
+              ? { active: false, tab: "agents", selectedAgent: 0, scrollOffset: 0 }
+              : { active: true, tab: "agents", selectedAgent: 0, scrollOffset: 0 };
+          }}
+        />
+      )}
       {activeGameScreen === "coin_toss" && (
         <CoinTossGame onClose={closeGameScreen} initialChoice={clankerBet?.choice ?? null} autoFlip={clankerBet?.autoFlip ?? false} />
       )}
@@ -721,7 +781,7 @@ Keep responses under 60 words.`;
           bottom: 0,
           left: 0,
           right: 0,
-          height: 280,
+          height: isMobile ? "50vh" : 280,
           background: "linear-gradient(180deg, #1a0a0a 0%, #0e0808 100%)",
           borderTop: "2px solid #ff4444",
           display: "flex",
